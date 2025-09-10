@@ -1,0 +1,21 @@
+{
+  "name": "ArsisOS v2.0 Maverick",
+  "short_name": "ArsisOS",
+  "description": "A fully functional MacOS-like desktop environment built in React.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
