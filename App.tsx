@@ -17,7 +17,7 @@ import NotificationToast from './components/NotificationToast';
 import { MusicProvider } from './contexts/MusicContext';
 import { SecurityProvider } from './contexts/SecurityContext';
 import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS } from './constants';
-import { loginOrCreateUser, saveUserProfile } from './services/userProfile';
+import { loginOrCreateUser, saveUserProfile, createUser } from './services/userProfile';
 import type { AppID, WindowState, AppConfig, Notification, UserProfileData, DesktopItem, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact } from './types';
 import ApiMonitorWidget from './components/ApiMonitorWidget';
 import Maverick from './apps/Maverick';
@@ -89,6 +89,13 @@ const App: React.FC = () => {
     ],
   }), []);
 
+    // Memoize admin profile data
+    const ADMIN_PROFILE_DATA = useMemo<UserProfileData>(() => ({
+        ...GUEST_PROFILE_DATA,
+        settings: { wallpaper: WALLPAPERS[5], theme: 'dark' },
+        installedExternalApps: EXTERNAL_APPS.map(app => app.id),
+    }), [GUEST_PROFILE_DATA]);
+
   // User State
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserProfileData>(GUEST_PROFILE_DATA);
@@ -133,7 +140,7 @@ const App: React.FC = () => {
       const newData = { ...userData, ...updates };
       setUserData(newData);
       
-      if (currentUser) {
+      if (currentUser && currentUser !== 'admin') {
           await saveUserProfile(currentUser, newData);
       }
   }, [userData, currentUser]);
@@ -249,6 +256,14 @@ const App: React.FC = () => {
 
   // --- Auth Logic ---
   const handleLogin = useCallback(async (credentials?: { arsisId: string }): Promise<{ success: boolean; error?: string }> => {
+    if (credentials?.arsisId === 'admin') {
+        console.log("Admin login detected.");
+        setUserData(ADMIN_PROFILE_DATA);
+        setIsLoggedIn(true);
+        setCurrentUser('admin');
+        return { success: true };
+    }
+
     if (!credentials?.arsisId) { // Guest login
         setUserData(GUEST_PROFILE_DATA);
         setIsLoggedIn(true);
@@ -265,12 +280,8 @@ const App: React.FC = () => {
         });
     }
 
-    // This service call will now gracefully handle the lack of configuration
-    // by returning a guest profile, preventing a crash.
     const userProfileData = await loginOrCreateUser(credentials.arsisId, GUEST_PROFILE_DATA);
 
-    // If persistence is configured, set the current user for saving.
-    // Otherwise, it's a guest session, so currentUser should be null.
     if (isPersistenceConfigured) {
         setCurrentUser(credentials.arsisId);
     } else {
@@ -280,7 +291,32 @@ const App: React.FC = () => {
     setUserData(userProfileData);
     setIsLoggedIn(true);
     return { success: true };
-  }, [GUEST_PROFILE_DATA, addNotification]);
+  }, [GUEST_PROFILE_DATA, ADMIN_PROFILE_DATA, addNotification]);
+
+  const handleCreateUserFromGuest = useCallback(async (newId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!isPersistenceConfigured) {
+        addNotification({
+            appId: 'defense-ios',
+            title: 'Creation Failed',
+            message: 'Remote storage is not configured. Cannot create account.',
+        });
+        return { success: false, error: 'Remote storage is not configured.' };
+    }
+
+    const result = await createUser(newId, userData);
+
+    if (result.success) {
+        setCurrentUser(newId);
+        addNotification({
+            appId: 'arsis-id',
+            title: 'Account Created!',
+            message: `Your session has been successfully saved to Arsis ID: ${newId}`
+        });
+    }
+    
+    return result;
+
+  }, [userData, addNotification]);
 
   const toggleTheme = () => {
     updateUserProfile({ settings: { ...userData.settings, theme: userData.settings.theme === 'light' ? 'dark' : 'light' } });
@@ -394,6 +430,7 @@ const App: React.FC = () => {
             appSpecificProps.onSavePhoto = (photo: string) => updateUserProfile({ photos: [...userData.photos, photo] });
         } else if (appConfig.id === 'arsis-id') {
             appSpecificProps.currentUser = currentUser;
+            appSpecificProps.onCreateUserFromGuest = handleCreateUserFromGuest;
         } else if (appConfig.id === 'app-store') {
             appSpecificProps.installedApps = userData.installedExternalApps || [];
             appSpecificProps.onInstall = handleInstallApp;
@@ -420,7 +457,7 @@ const App: React.FC = () => {
         return [...currentWindows, newWindow];
       }
     });
-  }, [allApps, nextZIndex, incrementApiCallCount, userData, toggleTheme, updateUserProfile, addNotification, handleInstallLocalApp, currentUser, setWallpaper]);
+  }, [allApps, nextZIndex, incrementApiCallCount, userData, toggleTheme, updateUserProfile, addNotification, handleInstallLocalApp, currentUser, setWallpaper, handleCreateUserFromGuest]);
 
   const closeApp = useCallback((id: AppID) => {
     setWindows(currentWindows => currentWindows.filter(win => win.id !== id));

@@ -1,3 +1,4 @@
+
 import type { UserProfileData } from '../types';
 import { getGistData, updateGistData } from './storageService';
 import { isPersistenceConfigured } from '../config';
@@ -36,6 +37,33 @@ export const loginOrCreateUser = async (
         console.error("Failed to login or create user due to a storage error. Falling back to a temporary guest profile.", error);
         // If getGistData fails for any reason (network, config error), we fall back.
         return guestProfileData;
+    }
+};
+
+/**
+ * Creates a new user profile in the Gist storage if the ID doesn't already exist.
+ * This is used for converting a guest session into a saved profile.
+ * @param arsisId The new Arsis ID to create.
+ * @param data The UserProfileData from the current guest session.
+ * @returns A promise that resolves with a success status and an optional error message.
+ */
+export const createUser = async (arsisId: string, data: UserProfileData): Promise<{ success: boolean; error?: string }> => {
+    if (!isPersistenceConfigured) {
+        return { success: false, error: "Remote storage is not configured." };
+    }
+
+    try {
+        const allData = await getGistData();
+        if (allData[arsisId]) {
+            return { success: false, error: `Arsis ID "${arsisId}" is already taken.` };
+        }
+
+        allData[arsisId] = data;
+        await updateGistData(allData);
+        return { success: true };
+    } catch (error: any) {
+        console.error(`Failed to create profile for ${arsisId}:`, error);
+        return { success: false, error: error.message || "Could not connect to storage service." };
     }
 };
 
