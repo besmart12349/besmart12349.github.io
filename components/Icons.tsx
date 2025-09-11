@@ -2,10 +2,26 @@
 import React from 'react';
 
 export const MacetaraLogo: React.FC<{ className?: string }> = ({ className }) => (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M15 12C15 14.0355 12.5 17 12 17C11.5 17 9 14.0355 9 12C9 9.96447 10.3431 8 12 8C13.6569 8 15 9.96447 15 12Z" fill="currentColor"/>
-        <path d="M12 17V20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg" className={className} aria-label="Arsis OS Logo">
+        <defs>
+            <linearGradient id="arsisLogoGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#AEAEAE' }} />
+                <stop offset="100%" style={{ stopColor: '#787878' }} />
+            </linearGradient>
+        </defs>
+        <text 
+            x="50%" 
+            y="50%" 
+            dy=".3em" 
+            textAnchor="middle" 
+            fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+            fontSize="32" 
+            fontWeight="500" 
+            fill="url(#arsisLogoGradient)"
+            letterSpacing="-1.5"
+        >
+            arsis
+        </text>
     </svg>
 );
 
