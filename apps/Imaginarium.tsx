@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { Notification } from '../types';
+import { API_KEY } from '../config';
 
 type Mode = 'image' | 'video';
 
@@ -16,7 +17,7 @@ const Imaginarium: React.FC<ImaginariumProps> = ({ onApiCall, addNotification })
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
 
   const handleGenerate = async () => {
     if (!prompt) {
@@ -76,7 +77,7 @@ const Imaginarium: React.FC<ImaginariumProps> = ({ onApiCall, addNotification })
     let blobUrl = result;
 
     if (mode === 'video') {
-      const response = await fetch(`${result}&key=${process.env.API_KEY}`);
+      const response = await fetch(`${result}&key=${API_KEY}`);
       const blob = await response.blob();
       blobUrl = URL.createObjectURL(blob);
     }

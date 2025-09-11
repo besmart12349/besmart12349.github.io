@@ -11,15 +11,18 @@ const urlsToCache = [
   './types.ts',
   './constants.tsx',
   './sw.js',
+  './config.ts',
   
   // Icons from manifest
   './icon-192.png',
   './icon-512.png',
 
-  // Hooks and Contexts
+  // Hooks, Contexts, and Services
   './hooks/useDraggable.ts',
   './contexts/MusicContext.tsx',
   './contexts/SecurityContext.tsx',
+  './services/userProfile.ts',
+  './services/storageService.ts',
   
   // Components
   './components/TopBar.tsx',
@@ -61,6 +64,7 @@ const urlsToCache = [
   './apps/Maverick.tsx',
   './apps/Shortcuts.tsx',
   './apps/SystemMonitor.tsx',
+  './apps/Contacts.tsx',
   
   // CDN resources
   'https://aistudiocdn.com/react@^19.1.1',

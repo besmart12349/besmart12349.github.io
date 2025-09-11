@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import type { Notification, HoustonMessage } from '../types';
+import { API_KEY } from '../config';
 
 interface HoustonProps {
   history: HoustonMessage[];
@@ -22,7 +23,7 @@ const Houston: React.FC<HoustonProps> = ({ history, onHistoryChange, onApiCall, 
   useEffect(scrollToBottom, [history]);
 
   useEffect(() => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     const geminiHistory = history.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.text }]

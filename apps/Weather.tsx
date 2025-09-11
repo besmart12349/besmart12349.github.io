@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
+import { API_KEY } from '../config';
 
 interface WeatherData {
   temperature: number;
@@ -17,7 +18,7 @@ const Weather: React.FC<WeatherProps> = ({ onApiCall }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
 
   const fetchWeather = async (searchCity: string) => {
     if (!searchCity) return;

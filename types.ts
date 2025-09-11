@@ -42,7 +42,7 @@ declare global {
   }
 }
 
-export type AppID = 'pages' | 'terminal' | 'weather' | 'my-docs' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | string;
+export type AppID = 'pages' | 'terminal' | 'weather' | 'my-docs' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | string;
 
 export interface Shortcut {
   id: string; // A unique ID, e.g., timestamp
@@ -90,12 +90,14 @@ export interface WindowState {
   title:string;
   Component: React.ComponentType<any>;
   position: { x: number; y: number };
-  size: { width: number; height: number };
+  // FIX: Allow width and height to be strings to support viewport units for maximized windows.
+  size: { width: number | string; height: number | string };
   zIndex: number;
   isMinimized: boolean;
   isMaximized: boolean;
   previousPosition?: { x: number; y: number };
-  previousSize?: { width: number; height: number };
+  // FIX: Allow previousSize to store string values from maximized states, matching the `size` property.
+  previousSize?: { width: number | string; height: number | string };
   initialProps?: any;
 }
 
@@ -131,11 +133,6 @@ export interface ProxyConfig {
 }
 
 // Data persistence types
-export interface ArsisIdCredentials {
-    username: string;
-    hash: string; // A simple salted hash or similar
-}
-
 export interface Page {
     id: number;
     title: string;
@@ -152,6 +149,41 @@ export interface HoustonMessage {
     text: string;
 }
 
+export type WidgetComponentID = 'weather-widget' | 'stocks-widget';
+
+export interface WidgetConfig {
+    id: WidgetComponentID;
+    title: string;
+    component: React.ComponentType<any>;
+    defaultSize: { width: number, height: number };
+}
+
+export interface WidgetState {
+    instanceId: string; // e.g., "weather-widget-1680386400000"
+    widgetId: WidgetComponentID;
+    position: { x: number; y: number };
+}
+
+export interface TabState {
+  id: number;
+  title: string;
+  url: string;
+  history: string[];
+  historyIndex: number;
+  content: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface Contact {
+  id: string; // e.g., "contact-1680386400000"
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  avatarId: number; // Index for an array of predefined avatars
+}
+
 export interface UserProfileData {
     desktopItems: DesktopItem[];
     pages: Page[];
@@ -166,9 +198,6 @@ export interface UserProfileData {
     installedExternalApps?: AppID[];
     installedLocalApps?: InstalledApp[];
     shortcuts: Shortcut[];
-}
-
-export interface UserProfile {
-    credentials: ArsisIdCredentials;
-    data: UserProfileData;
+    widgets?: WidgetState[];
+    contacts: Contact[];
 }

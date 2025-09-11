@@ -124,6 +124,13 @@ export const PlusIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+export const XIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
+
+
 export const BoldIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h2.25c1.485 0 2.5 1.015 2.5 2.5s-1.015 2.5-2.5 2.5H8.25v-5zm0 5h2.75c1.82 0 3.25 1.43 3.25 3.25s-1.43 3.25-3.25 3.25H8.25v-6.5z" />

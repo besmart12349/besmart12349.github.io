@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MacetaraLogo, HoustonIcon, GridIcon, SearchIcon, ControlCenterIcon } from './Icons';
+import { MacetaraLogo, HoustonIcon, GridIcon, SearchIcon, ControlCenterIcon, DownloadIcon } from './Icons';
 
 interface TopBarProps {
   activeAppName: string;
@@ -12,6 +12,8 @@ interface TopBarProps {
   onSpotlightToggle: () => void;
   onControlCenterToggle: () => void;
   onNotificationCenterToggle: () => void;
+  isInstallable: boolean;
+  onInstallClick: () => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({ 
@@ -25,6 +27,8 @@ const TopBar: React.FC<TopBarProps> = ({
   onSpotlightToggle,
   onControlCenterToggle,
   onNotificationCenterToggle,
+  isInstallable,
+  onInstallClick,
 }) => {
   const [time, setTime] = useState(new Date());
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -74,6 +78,11 @@ const TopBar: React.FC<TopBarProps> = ({
         <span className="font-bold">{activeAppName}</span>
       </div>
       <div className="flex items-center space-x-4">
+        {isInstallable && (
+          <button onClick={onInstallClick} className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title="Install ArsisOS">
+            <DownloadIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </button>
+        )}
         <button onClick={onHoustonClick} className="p-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10" title="Open Houston AI">
           <HoustonIcon className="h-5 w-5" />
         </button>

@@ -3,6 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { useSecurity, VpnStatus, FirewallLevel, EncryptionLevel, PROXIES } from '../contexts/SecurityContext';
 import type { Notification } from '../types';
 import { DefenseIOSIcon, HoustonIcon } from '../components/Icons';
+import { API_KEY } from '../config';
 
 interface DefenseIOSProps {
   addNotification?: (notification: Omit<Notification, 'id' | 'icon'>) => void;
@@ -81,7 +82,7 @@ const DefenseIOS: React.FC<DefenseIOSProps> = ({ addNotification, onApiCall }) =
     setIsGettingTip(true);
     onApiCall?.();
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey: API_KEY });
       const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: "Provide a single, concise cybersecurity tip for a personal computer user. Start the sentence with 'DefenseAI recommends:'"

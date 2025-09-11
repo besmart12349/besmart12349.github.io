@@ -22,6 +22,7 @@ import Installer from './apps/Installer';
 import AppStore from './apps/AppStore';
 import Shortcuts from './apps/Shortcuts';
 import SystemMonitor from './apps/SystemMonitor';
+import Contacts from './apps/Contacts';
 
 import { 
     PagesIcon, 
@@ -56,12 +57,14 @@ import {
     SystemMonitorIcon,
     YouTubeIcon,
     TrelloIcon,
+    ContactsIcon,
 } from './components/Icons';
 
 export const APPS: AppConfig[] = [
   // User-specified order
   { id: 'my-docs', title: 'MyDocs', icon: MyDocsIcon, component: MyDocs, width: 700, height: 500, onDesktop: true },
   { id: 'maverick', title: 'Maverick', icon: MaverickIcon, component: Maverick, width: 1024, height: 768 },
+  { id: 'contacts', title: 'Contacts', icon: ContactsIcon, component: Contacts, width: 750, height: 500 },
   { id: 'houston', title: 'Houston', icon: HoustonIcon, component: Houston, width: 500, height: 700, onDesktop: true },
   { id: 'terminal', title: 'Terminal', icon: TerminalIcon, component: Terminal, width: 680, height: 420, showInDock: false },
   { id: 'calendar', title: 'Calendar', icon: CalendarIcon, component: Calendar, width: 700, height: 550 },

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { Page } from '../types';
 import { HoustonIcon } from '../components/Icons';
+import { API_KEY } from '../config';
 
 interface PagesProps {
   savedPages: Page[];
@@ -100,7 +101,7 @@ const Pages: React.FC<PagesProps> = ({ savedPages, onSavePages, onApiCall }) => 
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        const ai = new GoogleGenAI({ apiKey: API_KEY });
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
         const newText = response.text;
 
