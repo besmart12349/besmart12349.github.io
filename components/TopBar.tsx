@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MacetaraLogo, HoustonIcon, GridIcon, SearchIcon, ControlCenterIcon, DownloadIcon } from './Icons';
 
@@ -7,6 +8,7 @@ interface TopBarProps {
   onRestart: () => void;
   onShutdown: () => void;
   onSleep: () => void;
+  onLogOut: () => void;
   onHoustonClick: () => void;
   onMissionControlToggle: () => void;
   onSpotlightToggle: () => void;
@@ -22,6 +24,7 @@ const TopBar: React.FC<TopBarProps> = ({
   onRestart, 
   onShutdown, 
   onSleep, 
+  onLogOut,
   onHoustonClick,
   onMissionControlToggle,
   onSpotlightToggle,
@@ -72,6 +75,8 @@ const TopBar: React.FC<TopBarProps> = ({
               <button onClick={() => { onSleep(); setMenuOpen(false); }} className="block w-full text-left px-4 py-1.5 text-sm hover:bg-blue-500 hover:text-white dark:text-white">Sleep</button>
               <button onClick={() => { onRestart(); setMenuOpen(false); }} className="block w-full text-left px-4 py-1.5 text-sm hover:bg-blue-500 hover:text-white dark:text-white">Restart...</button>
               <button onClick={() => { onShutdown(); setMenuOpen(false); }} className="block w-full text-left px-4 py-1.5 text-sm hover:bg-blue-500 hover:text-white dark:text-white">Shut Down...</button>
+              <div className="my-1 h-px bg-gray-400/30 dark:bg-gray-600/30"></div>
+              <button onClick={() => { onLogOut(); setMenuOpen(false); }} className="block w-full text-left px-4 py-1.5 text-sm hover:bg-blue-500 hover:text-white dark:text-white">Log Out</button>
             </div>
           )}
         </div>

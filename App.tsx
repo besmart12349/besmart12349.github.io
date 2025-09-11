@@ -318,6 +318,32 @@ const App: React.FC = () => {
 
   }, [userData, addNotification]);
 
+  const handleLogOut = useCallback(() => {
+    setIsLoggedIn(false);
+
+    // Reset user-specific data to guest defaults
+    setCurrentUser(null);
+    setUserData(GUEST_PROFILE_DATA);
+    
+    // Clear all windows and other session state
+    setWindows([]);
+    setActiveWindow(null);
+    setNotifications([]);
+    setToasts([]);
+    setWidgets([]);
+    setDesktopItems([]);
+    setApiCallCount(0);
+
+    // Close all pop-up UI elements
+    setMissionControlActive(false);
+    setSpotlightVisible(false);
+    setLaunchpadVisible(false);
+    setControlCenterVisible(false);
+    setNotificationCenterVisible(false);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+    setWidgetPickerVisible(false);
+  }, [GUEST_PROFILE_DATA]);
+
   const toggleTheme = () => {
     updateUserProfile({ settings: { ...userData.settings, theme: userData.settings.theme === 'light' ? 'dark' : 'light' } });
   };
@@ -395,6 +421,9 @@ const App: React.FC = () => {
         if(appConfig.externalUrl) {
             appSpecificProps.initialUrl = appConfig.externalUrl;
             appSpecificProps.onApiCall = incrementApiCallCount;
+            // Fix: Add dummy handlers for external apps to prevent crashes inside Maverick.
+            appSpecificProps.onUrlChange = () => {};
+            appSpecificProps.onTitleChange = () => {};
         } else if (appConfig.id === 'settings') {
           appSpecificProps.onWallpaperSelect = setWallpaper;
           appSpecificProps.wallpapers = WALLPAPERS;
@@ -570,6 +599,7 @@ const App: React.FC = () => {
                 onRestart={handleRestart}
                 onShutdown={handleShutdown}
                 onSleep={handleSleep}
+                onLogOut={handleLogOut}
                 onHoustonClick={() => openApp('houston')}
                 onMissionControlToggle={toggleMissionControl}
                 onSpotlightToggle={toggleSpotlight}
