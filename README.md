@@ -20,7 +20,7 @@ ArsisOS is a fully functional MacOS-like desktop environment built in React and 
 
 ## 🚀 Live Demo
 
-You can deploy your own version to GitHub Pages. The live demo will be available at: `https://<your-username>.github.io/<your-repo-name>/`
+You can deploy your own version to GitHub Pages. The live demo will be available at:(https://ai.studio/apps/drive/1hGrIRt4_MJ9UsOTwvic6kCtDhJJUkUoT)
 
 ## 📦 Getting Started
 
