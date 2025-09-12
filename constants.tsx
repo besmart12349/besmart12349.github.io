@@ -1,10 +1,9 @@
-
 import React from 'react';
-import type { AppConfig } from './types';
+import type { AppConfig, VFS } from './types';
 import Pages from './apps/Notes';
 import Terminal from './apps/Terminal';
 import Weather from './apps/Weather';
-import MyDocs from './apps/MyDocs';
+import Finder from './apps/MyDocs';
 import Calculator from './apps/Calculator';
 import Maverick from './apps/Maverick';
 import About from './apps/About';
@@ -23,12 +22,13 @@ import AppStore from './apps/AppStore';
 import Shortcuts from './apps/Shortcuts';
 import SystemMonitor from './apps/SystemMonitor';
 import Contacts from './apps/Contacts';
+import PiSimulator from './apps/PiSimulator';
 
 import { 
     PagesIcon, 
     TerminalIcon, 
     WeatherIcon, 
-    MyDocsIcon, 
+    FinderIcon, 
     CalculatorIcon, 
     MaverickIcon,
     AboutIcon,
@@ -58,14 +58,16 @@ import {
     YouTubeIcon,
     TrelloIcon,
     ContactsIcon,
+    PiSimulatorIcon,
 } from './components/Icons';
 
 export const APPS: AppConfig[] = [
   // User-specified order
-  { id: 'my-docs', title: 'MyDocs', icon: MyDocsIcon, component: MyDocs, width: 700, height: 500, onDesktop: true },
+  { id: 'finder', title: 'Finder', icon: FinderIcon, component: Finder, width: 700, height: 500, onDesktop: true },
   { id: 'maverick', title: 'Maverick', icon: MaverickIcon, component: Maverick, width: 1024, height: 768 },
   { id: 'contacts', title: 'Contacts', icon: ContactsIcon, component: Contacts, width: 750, height: 500 },
   { id: 'houston', title: 'Houston', icon: HoustonIcon, component: Houston, width: 500, height: 700, onDesktop: true },
+  { id: 'pi-simulator', title: 'Pi Simulator', icon: PiSimulatorIcon, component: PiSimulator, width: 1024, height: 640 },
   { id: 'terminal', title: 'Terminal', icon: TerminalIcon, component: Terminal, width: 680, height: 420, showInDock: false },
   { id: 'calendar', title: 'Calendar', icon: CalendarIcon, component: Calendar, width: 700, height: 550 },
   { id: 'imaginarium', title: 'Imaginarium', icon: ImaginariumIcon, component: Imaginarium, width: 800, height: 600 },
@@ -195,3 +197,79 @@ export const LOCAL_APP_ICONS: Record<string, React.ComponentType<{ className?: s
 
 
 export const API_CALL_LIMIT = 1000;
+
+export const createInitialVFS = (): VFS => {
+    const desktopId = 'Desktop';
+    const documentsId = 'Documents';
+    const picturesId = 'Pictures';
+    const welcomeFileId = 'file-welcome';
+    const finderAppId = 'app-finder';
+    const houstonAppId = 'app-houston';
+    const networkInfoAppId = 'app-network';
+    const installerAppId = 'app-installer';
+
+    return {
+        id: 'root',
+        name: '/',
+        type: 'directory',
+        children: {
+            [desktopId]: {
+                id: desktopId,
+                name: 'Desktop',
+                type: 'directory',
+                children: {
+                    [welcomeFileId]: {
+                        id: welcomeFileId,
+                        name: 'Welcome.txt',
+                        type: 'file',
+                        content: 'Welcome to your new ArsisOS desktop!',
+                        meta: { iconPosition: { x: window.innerWidth - 120, y: 40 }}
+                    },
+                    [finderAppId]: {
+                        id: finderAppId,
+                        name: 'Finder',
+                        type: 'app',
+                        meta: { appId: 'finder', iconPosition: { x: window.innerWidth - 120, y: 150 } }
+                    },
+                    [houstonAppId]: {
+                        id: houstonAppId,
+                        name: 'Houston',
+                        type: 'app',
+                        meta: { appId: 'houston', iconPosition: { x: window.innerWidth - 120, y: 260 } }
+                    },
+                     [networkInfoAppId]: {
+                        id: networkInfoAppId,
+                        name: 'Network Info',
+                        type: 'app',
+                        meta: { appId: 'network-info', iconPosition: { x: window.innerWidth - 120, y: 370 } }
+                    },
+                    [installerAppId]: {
+                        id: installerAppId,
+                        name: 'Install ArsisOS',
+                        type: 'app',
+                        meta: { appId: 'installer', iconPosition: { x: window.innerWidth - 120, y: 480 } }
+                    }
+                }
+            },
+            [documentsId]: {
+                id: documentsId,
+                name: 'Documents',
+                type: 'directory',
+                children: {
+                    'doc-1': {
+                        id: 'doc-1',
+                        name: 'Getting Started.txt',
+                        type: 'file',
+                        content: '<h1>Welcome to Pages!</h1><p>This is your personal document editor. All your files are automatically saved to your Arsis ID.</p><p>You can create new files, edit existing ones, and even use the integrated <b>Houston AI</b> to help you write.</p>'
+                    }
+                }
+            },
+            [picturesId]: {
+                id: picturesId,
+                name: 'Pictures',
+                type: 'directory',
+                children: {}
+            }
+        }
+    };
+};

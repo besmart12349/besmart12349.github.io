@@ -65,6 +65,7 @@ const urlsToCache = [
   './apps/Shortcuts.tsx',
   './apps/SystemMonitor.tsx',
   './apps/Contacts.tsx',
+  './apps/PiSimulator.tsx',
   
   // CDN resources
   'https://aistudiocdn.com/react@^19.1.1',

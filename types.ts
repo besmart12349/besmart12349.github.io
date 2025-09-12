@@ -42,7 +42,7 @@ declare global {
   }
 }
 
-export type AppID = 'pages' | 'terminal' | 'weather' | 'my-docs' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | string;
+export type AppID = 'pages' | 'terminal' | 'weather' | 'finder' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | string;
 
 export interface Shortcut {
   id: string; // A unique ID, e.g., timestamp
@@ -64,11 +64,6 @@ export interface InstalledApp {
   height?: number;
 }
 
-
-export interface DesktopItem {
-  id: AppID;
-  position: { x: number; y: number };
-}
 
 export interface AppConfig {
   id: AppID;
@@ -132,13 +127,6 @@ export interface ProxyConfig {
   url: string;
 }
 
-// Data persistence types
-export interface Page {
-    id: number;
-    title: string;
-    content: string;
-}
-
 export interface CalendarEvent {
     id: number;
     text: string;
@@ -184,11 +172,51 @@ export interface Contact {
   avatarId: number; // Index for an array of predefined avatars
 }
 
+// --- VIRTUAL FILE SYSTEM ---
+
+export type VFSNodeType = 'file' | 'directory' | 'app';
+
+// FIX: Refactor VFSNode into a discriminated union to fix typing errors across the application.
+// This base interface holds common properties. It is not exported to avoid confusion.
+interface VFSNodeBase {
+    id: string; // e.g., "Desktop" or "file-1680386400000"
+    name: string; // e.g., "My Document.txt"
+    type: VFSNodeType;
+    meta?: {
+        iconPosition?: { x: number; y: number };
+        appId?: AppID; // For app shortcuts on desktop
+    }
+}
+
+export interface VFSFile extends VFSNodeBase {
+    type: 'file';
+    content: string; // File content, e.g., text or a base64 data URL
+}
+
+export interface VFSDirectory extends VFSNodeBase {
+    type: 'directory';
+    children: Record<string, VFSNode>; // Map of child node IDs to nodes
+}
+
+export interface VFSApp extends VFSNodeBase {
+    type: 'app';
+    meta: {
+        appId: AppID;
+        iconPosition?: { x: number; y: number };
+    }
+}
+
+// VFSNode is now a discriminated union of all possible node types.
+export type VFSNode = VFSFile | VFSDirectory | VFSApp;
+
+// A simple VFS structure, with the root being a directory
+export type VFS = VFSDirectory;
+
+
+// --- USER PROFILE ---
 export interface UserProfileData {
-    desktopItems: DesktopItem[];
-    pages: Page[];
+    vfs: VFS;
     calendarEvents: Record<string, CalendarEvent[]>;
-    photos: string[]; // array of data URLs
     houstonHistory: HoustonMessage[];
     maverickUrl: string;
     settings: {

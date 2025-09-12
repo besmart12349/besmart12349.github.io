@@ -1,7 +1,34 @@
 
-import type { UserProfileData } from '../types';
+import type { UserProfileData, VFS, VFSDirectory } from '../types';
 import { getGistData, updateGistData } from './storageService';
 import { isPersistenceConfigured } from '../config';
+import { createInitialVFS } from '../constants';
+
+/**
+ * Ensures a user's VFS has the default directories. Merges in any missing ones.
+ * This is useful for migrating older user profiles.
+ * @param userVfs The user's current VFS.
+ * @returns The migrated VFS.
+ */
+const migrateVfs = (userVfs: VFS): VFS => {
+    const defaultVfs = createInitialVFS();
+    let migratedVfs = { ...userVfs };
+
+    // Ensure top-level children object exists
+    if (!migratedVfs.children) {
+        migratedVfs.children = {};
+    }
+
+    // Check for and merge default directories if they don't exist
+    for (const key in defaultVfs.children) {
+        if (!migratedVfs.children[key]) {
+            console.log(`Migrating VFS: Adding missing directory '/${key}' for user.`);
+            migratedVfs.children[key] = defaultVfs.children[key];
+        }
+    }
+    return migratedVfs;
+};
+
 
 /**
  * Logs in a user by fetching their data from the Gist. If the user doesn't exist,
@@ -25,8 +52,13 @@ export const loginOrCreateUser = async (
 
         if (allData[arsisId]) {
             console.log(`User ${arsisId} found. Logging in.`);
-            // Merge with guest data to ensure new properties are added to old profiles
-            return { ...guestProfileData, ...allData[arsisId] };
+            const userProfile = allData[arsisId];
+            
+            // Ensure VFS exists and has default folders for backward compatibility
+            userProfile.vfs = migrateVfs(userProfile.vfs || createInitialVFS());
+
+            // Merge with guest data to ensure new root properties are added to old profiles
+            return { ...guestProfileData, ...userProfile };
         } else {
             console.log(`User ${arsisId} not found. Creating new profile.`);
             allData[arsisId] = guestProfileData;

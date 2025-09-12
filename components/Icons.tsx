@@ -75,6 +75,26 @@ export const MyDocsIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+export const FinderIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <defs>
+      <linearGradient id="finderFace" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0" stopColor="#55DDFF" />
+        <stop offset="1" stopColor="#0088CC" />
+      </linearGradient>
+      <linearGradient id="finderSmile" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0" stopColor="#003344" />
+        <stop offset="1" stopColor="#001122" />
+      </linearGradient>
+    </defs>
+    <rect width="56" height="56" x="4" y="4" fill="url(#finderFace)" rx="12" />
+    <path d="M20 32 C20 40, 44 40, 44 32" stroke="url(#finderSmile)" strokeWidth="4" fill="none" strokeLinecap="round" />
+    <circle cx="22" cy="26" r="4" fill="url(#finderSmile)" />
+    <circle cx="42" cy="26" r="4" fill="url(#finderSmile)" />
+  </svg>
+);
+
+
 export const CalculatorIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className={className}>
         <rect width="56" height="56" x="4" y="4" fill="#4a4a4a" rx="12" />
@@ -535,5 +555,27 @@ export const TrelloIcon: React.FC<{ className?: string }> = ({ className }) => (
 export const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
+
+export const PiSimulatorIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className={className}>
+        <rect width="56" height="56" x="4" y="4" fill="#333" rx="12" />
+        <defs>
+            <radialGradient id="pi-grad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#C51A4A" />
+                <stop offset="100%" stopColor="#9C143A" />
+            </radialGradient>
+        </defs>
+        <circle cx="28" cy="24" r="6" fill="url(#pi-grad)" />
+        <circle cx="36" cy="24" r="6" fill="url(#pi-grad)" />
+        <circle cx="24" cy="31" r="6" fill="url(#pi-grad)" />
+        <circle cx="32" cy="31" r="6" fill="url(#pi-grad)" />
+        <circle cx="40" cy="31" r="6" fill="url(#pi-grad)" />
+        <circle cx="28" cy="38" r="6" fill="url(#pi-grad)" />
+        <circle cx="36" cy="38" r="6" fill="url(#pi-grad)" />
+        <circle cx="32" cy="45" r="6" fill="url(#pi-grad)" />
+        <path d="M36 20 C 40 16, 44 16, 44 20" stroke="#228B22" strokeWidth="3" fill="none" strokeLinecap="round" />
+        <path d="M40 12 C 44 12, 48 16, 44 20" stroke="#228B22" strokeWidth="3" fill="none" strokeLinecap="round" />
     </svg>
 );

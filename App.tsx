@@ -16,9 +16,9 @@ import NotificationCenter from './components/NotificationCenter';
 import NotificationToast from './components/NotificationToast';
 import { MusicProvider } from './contexts/MusicContext';
 import { SecurityProvider } from './contexts/SecurityContext';
-import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS } from './constants';
+import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS, createInitialVFS } from './constants';
 import { loginOrCreateUser, saveUserProfile, createUser } from './services/userProfile';
-import type { AppID, WindowState, AppConfig, Notification, UserProfileData, DesktopItem, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact } from './types';
+import type { AppID, WindowState, AppConfig, Notification, UserProfileData, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact, VFSNode, VFS, VFSDirectory, VFSFile, VFSApp } from './types';
 import ApiMonitorWidget from './components/ApiMonitorWidget';
 import Maverick from './apps/Maverick';
 import { TerminalIcon } from './components/Icons';
@@ -38,6 +38,33 @@ const WALLPAPERS = [
   'https://images.unsplash.com/photo-1511497584788-876760111969?auto=format&fit=crop&w=1920&q=80',
   'https://images.unsplash.com/photo-1483728642387-6c351b40b7de?auto=format&fit=crop&w=1920&q=80',
 ];
+
+// --- VFS UTILITY FUNCTIONS ---
+const findVFSNode = (vfs: VFSDirectory, path: string): VFSNode | null => {
+    const parts = path.split('/').filter(p => p);
+    let currentNode: VFSDirectory = vfs;
+
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const childNode = Object.values(currentNode.children).find(c => c.name === part);
+
+        if (!childNode) return null;
+
+        if (childNode.type === 'directory') {
+            currentNode = childNode as VFSDirectory;
+        } else if (i === parts.length - 1) {
+            return childNode;
+        } else {
+            return null; // Path continues but we found a file
+        }
+    }
+    return currentNode;
+};
+
+const findParentVFSNode = (vfs: VFSDirectory, path: string): VFSDirectory | null => {
+    const parentPath = path.substring(0, path.lastIndexOf('/'));
+    return findVFSNode(vfs, parentPath || '/') as VFSDirectory | null;
+}
 
 const App: React.FC = () => {
   const [windows, setWindows] = useState<WindowState[]>([]);
@@ -59,7 +86,6 @@ const App: React.FC = () => {
   const [brightness, setBrightness] = useState(100);
   const [wifiOn, setWifiOn] = useState(true);
   const [bluetoothOn, setBluetoothOn] = useState(true);
-  const [desktopItems, setDesktopItems] = useState<DesktopItem[]>([]);
   const [dockApps, setDockApps] = useState<AppConfig[]>([]);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   
@@ -69,15 +95,10 @@ const App: React.FC = () => {
   
   // Memoize guest profile data, as it depends on window size.
   const GUEST_PROFILE_DATA = useMemo<UserProfileData>(() => ({
-    desktopItems: APPS.filter(app => app.onDesktop).map((app, index) => ({
-      id: app.id,
-      position: { x: window.innerWidth - 120, y: 40 + index * 110 }
-    })),
-    pages: [{ id: 1, title: 'Welcome Page', content: '<h1>Welcome to ArsisOS!</h1><p>This is a temporary page for your guest session. Create an <b>Arsis ID</b> to save your work!</p><p>Try the new Houston AI assistant integrated into Pages to help you write.</p>' }],
+    vfs: createInitialVFS(),
     calendarEvents: {},
-    photos: [],
     houstonHistory: [{ sender: 'houston', text: "Hello! I'm Houston, your AI assistant. How can I help you today?" }],
-    maverickUrl: 'https://www.wikipedia.org/',
+    maverickUrl: 'https://besmart12349.github.io/maverick2.github.io/',
     settings: { wallpaper: WALLPAPERS[3], theme: 'light' },
     installedExternalApps: [],
     installedLocalApps: [],
@@ -203,10 +224,9 @@ const App: React.FC = () => {
   
   useEffect(() => {
     if (isLoggedIn) {
-        setDesktopItems(userData.desktopItems || []);
         setWidgets(userData.widgets || []);
     }
-  }, [isLoggedIn, userData.desktopItems, userData.widgets]);
+  }, [isLoggedIn, userData.widgets]);
   
   const handleInstallApp = useCallback((appId: AppID) => {
       const currentInstalled = userData.installedExternalApps || [];
@@ -228,17 +248,16 @@ const App: React.FC = () => {
     const currentInstalled = userData.installedLocalApps || [];
     if (currentInstalled.some(app => app.id === appManifest.id)) {
         addNotification({
-            appId: 'my-docs',
+            appId: 'finder',
             title: 'Installation Failed',
             message: `${appManifest.title} is already installed.`
         });
         return;
     }
 
-    // Basic validation
     if (!LOCAL_APP_COMPONENTS[appManifest.componentId] || !LOCAL_APP_ICONS[appManifest.iconId]) {
          addNotification({
-            appId: 'my-docs',
+            appId: 'finder',
             title: 'Installation Failed',
             message: `The app manifest for ${appManifest.title} is invalid or corrupted.`
         });
@@ -248,7 +267,7 @@ const App: React.FC = () => {
     updateUserProfile({ installedLocalApps: [...currentInstalled, appManifest] });
 
     addNotification({
-        appId: 'my-docs',
+        appId: 'finder',
         title: 'App Installed',
         message: `${appManifest.title} has been installed successfully.`
     });
@@ -271,7 +290,6 @@ const App: React.FC = () => {
         return { success: true };
     }
     
-    // Proactively check if persistence is configured and notify the user if it's not.
     if (!isPersistenceConfigured) {
         addNotification({
             appId: 'defense-ios',
@@ -320,21 +338,14 @@ const App: React.FC = () => {
 
   const handleLogOut = useCallback(() => {
     setIsLoggedIn(false);
-
-    // Reset user-specific data to guest defaults
     setCurrentUser(null);
     setUserData(GUEST_PROFILE_DATA);
-    
-    // Clear all windows and other session state
     setWindows([]);
     setActiveWindow(null);
     setNotifications([]);
     setToasts([]);
     setWidgets([]);
-    setDesktopItems([]);
     setApiCallCount(0);
-
-    // Close all pop-up UI elements
     setMissionControlActive(false);
     setSpotlightVisible(false);
     setLaunchpadVisible(false);
@@ -356,12 +367,67 @@ const App: React.FC = () => {
     setApiCallCount(prev => prev + 1);
   }, []);
 
-  const handleIconPositionChange = (id: AppID, newPosition: { x: number; y: number }) => {
-    const newDesktopItems = desktopItems.map(item => item.id === id ? { ...item, position: newPosition } : item);
-    setDesktopItems(newDesktopItems);
-    updateUserProfile({ desktopItems: newDesktopItems });
+  // --- VFS Handlers ---
+  const handleVFSUpdate = (newVfs: VFS) => {
+      updateUserProfile({ vfs: newVfs });
   };
 
+  const handleCreateNode = (parentPath: string, name: string, type: 'file' | 'directory', content = '') => {
+      const newVfs = JSON.parse(JSON.stringify(userData.vfs));
+      const parentNode = findVFSNode(newVfs, parentPath) as VFSDirectory;
+      if (!parentNode || parentNode.type !== 'directory') return;
+
+      const newNodeId = `${type}-${Date.now()}`;
+      const newNode: VFSNode = type === 'file'
+          ? { id: newNodeId, name, type, content }
+          : { id: newNodeId, name, type, children: {} };
+
+      parentNode.children[newNodeId] = newNode;
+      handleVFSUpdate(newVfs);
+  };
+  
+  const handleUpdateNodeContent = (path: string, content: string) => {
+      const newVfs = JSON.parse(JSON.stringify(userData.vfs));
+      const node = findVFSNode(newVfs, path) as VFSFile;
+      if (!node || node.type !== 'file') return;
+
+      node.content = content;
+      handleVFSUpdate(newVfs);
+  };
+  
+  const handleDeleteNode = (path: string) => {
+      const newVfs = JSON.parse(JSON.stringify(userData.vfs));
+      const parentNode = findParentVFSNode(newVfs, path);
+      const nodeToDelete = findVFSNode(newVfs, path);
+      if (!parentNode || !nodeToDelete) return;
+
+      delete parentNode.children[nodeToDelete.id];
+      handleVFSUpdate(newVfs);
+  };
+
+  const handleRenameNode = (path: string, newName: string) => {
+      const newVfs = JSON.parse(JSON.stringify(userData.vfs));
+      const node = findVFSNode(newVfs, path);
+      if (!node) return;
+
+      node.name = newName;
+      handleVFSUpdate(newVfs);
+  };
+  
+  const handleIconPositionChange = (id: string, newPosition: { x: number; y: number }) => {
+    const newVfs = JSON.parse(JSON.stringify(userData.vfs));
+    const desktopNode = findVFSNode(newVfs, '/Desktop') as VFSDirectory;
+    if (!desktopNode) return;
+    
+    const node = desktopNode.children[id];
+    if (node) {
+        if (!node.meta) node.meta = {};
+        node.meta.iconPosition = newPosition;
+        handleVFSUpdate(newVfs);
+    }
+  };
+
+  // --- Widget Handlers ---
   const handleWidgetPositionChange = (instanceId: string, newPosition: { x: number, y: number }) => {
     const newWidgets = widgets.map(w => w.instanceId === instanceId ? { ...w, position: newPosition } : w);
     setWidgets(newWidgets);
@@ -385,43 +451,56 @@ const App: React.FC = () => {
     setWidgets(newWidgets);
     updateUserProfile({ widgets: newWidgets });
   };
-
-  const openApp = useCallback((id: AppID, initialProps: any = {}) => {
+  
+  // --- App Management ---
+  const openApp = useCallback((appId: AppID, initialProps: any = {}) => {
     setLaunchpadVisible(false);
     setSpotlightVisible(false);
 
-    const appConfig = allApps.find(app => app.id === id);
+    const appConfig = allApps.find(app => app.id === appId);
     if (!appConfig) return;
 
-    // Handle native app shortcuts
     if (appConfig.uri) {
       window.location.href = appConfig.uri;
-      addNotification({
-        appId: 'shortcuts',
-        title: 'Launching Shortcut',
-        message: `Attempting to open ${appConfig.title}...`
-      });
+      addNotification({ appId: 'shortcuts', title: 'Launching Shortcut', message: `Attempting to open ${appConfig.title}...` });
       return;
+    }
+    
+    // VFS file opening logic
+    if (initialProps.filePath) {
+        const fileNode = findVFSNode(userData.vfs, initialProps.filePath) as VFSFile;
+        if (!fileNode) {
+            addNotification({ appId: 'finder', title: 'Error', message: 'File not found.' });
+            return;
+        }
+        if (fileNode.name.endsWith('.txt') || fileNode.name.endsWith('.md')) {
+            appId = 'pages'; // Override to open with Pages
+        }
     }
 
     setWindows(currentWindows => {
-      const existingWindow = currentWindows.find(win => win.id === id);
+      const existingWindow = currentWindows.find(win => win.id === appId);
       
       const AppComponent = appConfig.externalUrl ? Maverick : appConfig.component;
       if (!AppComponent) return currentWindows;
 
-      if (existingWindow) {
-        setActiveWindow(id);
-        return currentWindows.map(win => 
-          win.id === id ? { ...win, zIndex: nextZIndex, isMinimized: false } : win
-        );
+      if (existingWindow && !initialProps.filePath) { // Don't focus if opening new file
+        setActiveWindow(appId);
+        return currentWindows.map(win => win.id === appId ? { ...win, zIndex: nextZIndex, isMinimized: false } : win);
       } else {
         const appSpecificProps: any = {};
         
+        const vfsProps = {
+            vfs: userData.vfs,
+            onCreateNode: handleCreateNode,
+            onUpdateNodeContent: handleUpdateNodeContent,
+            onDeleteNode: handleDeleteNode,
+            onRenameNode: handleRenameNode
+        };
+
         if(appConfig.externalUrl) {
             appSpecificProps.initialUrl = appConfig.externalUrl;
             appSpecificProps.onApiCall = incrementApiCallCount;
-            // Fix: Add dummy handlers for external apps to prevent crashes inside Maverick.
             appSpecificProps.onUrlChange = () => {};
             appSpecificProps.onTitleChange = () => {};
         } else if (appConfig.id === 'settings') {
@@ -429,7 +508,7 @@ const App: React.FC = () => {
           appSpecificProps.wallpapers = WALLPAPERS;
           appSpecificProps.theme = userData.settings.theme;
           appSpecificProps.onThemeToggle = toggleTheme;
-        } else if (['houston', 'imaginarium', 'weather', 'pages', 'defense-ios'].includes(appConfig.id)) {
+        } else if (['houston', 'imaginarium', 'weather', 'defense-ios'].includes(appConfig.id)) {
           appSpecificProps.onApiCall = incrementApiCallCount;
           appSpecificProps.addNotification = addNotification;
         } else if (appConfig.id === 'maverick') {
@@ -439,12 +518,16 @@ const App: React.FC = () => {
             appSpecificProps.onTitleChange = (newTitle: string) => {
               setWindows(wins => wins.map(w => w.id === 'maverick' ? {...w, title: newTitle } : w));
             };
-        } else if (appConfig.id === 'my-docs') {
-          appSpecificProps.onOpenFile = (fileHandle: FileSystemFileHandle) => openApp('pages', { initialFileHandle: fileHandle });
-          appSpecificProps.onInstallApp = handleInstallLocalApp;
+        } else if (appConfig.id === 'finder') {
+            appSpecificProps.onOpenFile = (filePath: string) => openApp('finder', { filePath });
+            appSpecificProps.onInstallApp = handleInstallLocalApp;
+            Object.assign(appSpecificProps, vfsProps);
         } else if (appConfig.id === 'pages') {
-            appSpecificProps.savedPages = userData.pages;
-            appSpecificProps.onSavePages = (pages: any) => updateUserProfile({ pages });
+            Object.assign(appSpecificProps, vfsProps, { onApiCall: incrementApiCallCount });
+        } else if (appConfig.id === 'photo-booth') {
+             Object.assign(appSpecificProps, vfsProps);
+        } else if (appConfig.id === 'imaginarium') {
+             Object.assign(appSpecificProps, { onCreateNode: handleCreateNode });
         } else if (appConfig.id === 'contacts') {
             appSpecificProps.savedContacts = userData.contacts;
             appSpecificProps.onSaveContacts = (contacts: Contact[]) => updateUserProfile({ contacts });
@@ -454,9 +537,6 @@ const App: React.FC = () => {
         } else if (appConfig.id === 'calendar') {
             appSpecificProps.savedEvents = userData.calendarEvents;
             appSpecificProps.onSaveEvents = (calendarEvents: any) => updateUserProfile({ calendarEvents });
-        } else if (appConfig.id === 'photo-booth') {
-            appSpecificProps.savedPhotos = userData.photos;
-            appSpecificProps.onSavePhoto = (photo: string) => updateUserProfile({ photos: [...userData.photos, photo] });
         } else if (appConfig.id === 'arsis-id') {
             appSpecificProps.currentUser = currentUser;
             appSpecificProps.onCreateUserFromGuest = handleCreateUserFromGuest;
@@ -470,8 +550,8 @@ const App: React.FC = () => {
         }
         
         const newWindow: WindowState = {
-          id,
-          title: appConfig.title,
+          id: initialProps.filePath ? `${appId}-${Date.now()}` : appId,
+          title: initialProps.filePath ? findVFSNode(userData.vfs, initialProps.filePath)?.name || appConfig.title : appConfig.title,
           Component: AppComponent,
           position: { x: window.innerWidth / 2 - (appConfig.width || 800) / 2, y: window.innerHeight / 2 - (appConfig.height || 600) / 2 },
           size: { width: appConfig.width || 800, height: appConfig.height || 600 },
@@ -481,7 +561,7 @@ const App: React.FC = () => {
           initialProps: { ...appSpecificProps, ...initialProps }
         };
 
-        setActiveWindow(id);
+        setActiveWindow(newWindow.id);
         setNextZIndex(prev => prev + 1);
         return [...currentWindows, newWindow];
       }
@@ -570,6 +650,26 @@ const App: React.FC = () => {
     setControlCenterVisible(false);
     setNotificationCenterVisible(false);
   }
+  
+  const desktopItems = useMemo(() => {
+    const desktopNode = findVFSNode(userData.vfs, '/Desktop') as VFSDirectory;
+    if (!desktopNode || desktopNode.type !== 'directory') return [];
+    
+    return Object.values(desktopNode.children).map(node => {
+        const appId = node.type === 'app' ? (node as VFSApp).meta.appId : 'finder';
+        const appConfig = allApps.find(app => app.id === appId);
+
+        return {
+            id: node.id,
+            title: node.name,
+            IconComponent: appConfig?.icon || TerminalIcon,
+            position: node.meta?.iconPosition || { x: 50, y: 50 },
+            onOpen: () => node.type === 'app' 
+                ? openApp((node as VFSApp).meta.appId) 
+                : openApp('finder', { filePath: `/Desktop/${node.name}` })
+        };
+    });
+  }, [userData.vfs, allApps, openApp]);
 
   // --- Render logic ---
   if (isLoading) {
@@ -609,21 +709,17 @@ const App: React.FC = () => {
                 onInstallClick={handleInstallClick}
               />
               
-              {desktopItems.map(item => {
-                const appConfig = allApps.find(app => app.id === item.id);
-                if (!appConfig) return null;
-                return (
+              {desktopItems.map(item => (
                   <DesktopIcon
                     key={item.id}
                     id={item.id}
-                    title={appConfig.title}
-                    IconComponent={appConfig.icon}
-                    onOpen={() => openApp(item.id)}
+                    title={item.title}
+                    IconComponent={item.IconComponent}
+                    onOpen={item.onOpen}
                     initialPosition={item.position}
                     onPositionChange={(newPosition) => handleIconPositionChange(item.id, newPosition)}
                   />
-                )
-              })}
+              ))}
               
               {widgets.map(widget => {
                   const widgetConfig = WIDGETS.find(w => w.id === widget.widgetId);
