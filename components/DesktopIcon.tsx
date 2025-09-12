@@ -1,6 +1,3 @@
-
-
-
 import React from 'react';
 import type { AppID } from '../types';
 import { useDraggable } from '../hooks/useDraggable';

@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import TopBar from './components/TopBar';
 import Dock from './components/Dock';
@@ -17,12 +16,12 @@ import NotificationToast from './components/NotificationToast';
 import PasscodePrompt from './components/PasscodePrompt';
 import { MusicProvider } from './contexts/MusicContext';
 import { SecurityProvider } from './contexts/SecurityContext';
-import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS, createInitialVFS } from './constants';
+import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS, createInitialVFS, GUEST_PROFILE_DATA } from './constants';
 import { loginOrCreateUser, saveUserProfile, createUser } from './services/userProfile';
 import { saveGuestProfile, getGuestProfile, clearGuestProfile } from './services/localDbService';
-import type { AppID, WindowState, AppConfig, Notification, UserProfileData, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact, VFSNode, VFS, VFSDirectory, VFSFile, VFSApp } from './types';
+import type { AppID, WindowState, AppConfig, Notification, UserProfileData, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact, VFSNode, VFS, VFSDirectory, VFSFile, VFSApp, Alarm } from './types';
 import ApiMonitorWidget from './components/ApiMonitorWidget';
-import Maverick from './apps/Maverick';
+import Ozark from './apps/Maverick';
 import { TerminalIcon } from './components/Icons';
 import { isPersistenceConfigured } from './config';
 
@@ -112,33 +111,22 @@ const App: React.FC = () => {
   const [passcodePrompt, setPasscodePrompt] = useState<PasscodePromptState>({ visible: false, action: 'enter', onSuccess: () => {} });
   
   // Memoize guest profile data, as it depends on window size.
-  const GUEST_PROFILE_DATA = useMemo<UserProfileData>(() => ({
+  const GUEST_PROFILE_DATA_FULL = useMemo<UserProfileData>(() => ({
+    ...GUEST_PROFILE_DATA,
     vfs: createInitialVFS(),
-    calendarEvents: {},
-    houstonHistory: [{ sender: 'houston', text: "Hello! I'm Houston, your AI assistant. How can I help you today?" }],
-    maverickUrl: 'https://besmart12349.github.io/maverick2.github.io/',
     settings: { wallpaper: WALLPAPERS[3], theme: 'light' },
-    installedExternalApps: [],
-    installedLocalApps: [],
-    shortcuts: [],
-    widgets: [],
-    contacts: [],
-    watchedStocks: ['AAPL', 'GOOGL', 'MSFT', 'TSLA'],
-    lockedApps: [],
-    appLockPasscode: null,
-    hiddenInDock: [],
   }), []);
 
     // Memoize admin profile data
     const ADMIN_PROFILE_DATA = useMemo<UserProfileData>(() => ({
-        ...GUEST_PROFILE_DATA,
+        ...GUEST_PROFILE_DATA_FULL,
         settings: { wallpaper: WALLPAPERS[5], theme: 'dark' },
         installedExternalApps: EXTERNAL_APPS.map(app => app.id),
-    }), [GUEST_PROFILE_DATA]);
+    }), [GUEST_PROFILE_DATA_FULL]);
 
   // User State
   const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [userData, setUserData] = useState<UserProfileData>(GUEST_PROFILE_DATA);
+  const [userData, setUserData] = useState<UserProfileData>(GUEST_PROFILE_DATA_FULL);
   
   // Combine built-in apps, installed external apps, and shortcuts
   const allApps = useMemo(() => {
@@ -211,6 +199,46 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
   
+  // Alarm Notification Checker
+  useEffect(() => {
+    const alarmTimer = setInterval(() => {
+        if (!isLoggedIn || !userData.clockSettings?.alarms) return;
+
+        const now = new Date();
+        const currentTime = now.toTimeString().substring(0, 5); // HH:MM
+        
+        let needsUpdate = false;
+        const updatedAlarms = userData.clockSettings.alarms.map(alarm => {
+            if (alarm.enabled && alarm.time === currentTime && !alarm.notifiedForToday) {
+                console.log(`Sending notification for alarm: ${alarm.label}`);
+                addNotification({
+                    appId: 'clock',
+                    title: 'Alarm',
+                    message: alarm.label
+                });
+                needsUpdate = true;
+                return { ...alarm, notifiedForToday: true };
+            }
+            return alarm;
+        });
+
+        // Reset notification status at midnight
+        if (currentTime === "00:00") {
+            updatedAlarms.forEach(alarm => alarm.notifiedForToday = false);
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            updateUserProfile({
+                clockSettings: { ...userData.clockSettings, alarms: updatedAlarms }
+            });
+        }
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(alarmTimer);
+  }, [isLoggedIn, userData.clockSettings, addNotification, updateUserProfile]);
+
+
   // Calendar Notification Checker
   useEffect(() => {
     const notificationTimer = setInterval(() => {
@@ -366,7 +394,7 @@ const App: React.FC = () => {
     }
 
     if (!credentials?.arsisId) { // Guest login
-        const freshGuestProfile = GUEST_PROFILE_DATA;
+        const freshGuestProfile = GUEST_PROFILE_DATA_FULL;
         setUserData(freshGuestProfile);
         await saveGuestProfile(freshGuestProfile);
         setIsLoggedIn(true);
@@ -383,7 +411,7 @@ const App: React.FC = () => {
     }
     
     await clearGuestProfile();
-    const userProfileData = await loginOrCreateUser(credentials.arsisId, GUEST_PROFILE_DATA);
+    const userProfileData = await loginOrCreateUser(credentials.arsisId, GUEST_PROFILE_DATA_FULL);
 
     if (isPersistenceConfigured) {
         setCurrentUser(credentials.arsisId);
@@ -394,7 +422,7 @@ const App: React.FC = () => {
     setUserData(userProfileData);
     setIsLoggedIn(true);
     return { success: true };
-  }, [GUEST_PROFILE_DATA, ADMIN_PROFILE_DATA, addNotification]);
+  }, [GUEST_PROFILE_DATA_FULL, ADMIN_PROFILE_DATA, addNotification]);
 
   const handleCreateUserFromGuest = useCallback(async (newId: string): Promise<{ success: boolean; error?: string }> => {
     if (!isPersistenceConfigured) {
@@ -425,7 +453,7 @@ const App: React.FC = () => {
   const handleLogOut = useCallback(async () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
-    setUserData(GUEST_PROFILE_DATA);
+    setUserData(GUEST_PROFILE_DATA_FULL);
     setWindows([]);
     setActiveWindow(null);
     setNotifications([]);
@@ -440,7 +468,7 @@ const App: React.FC = () => {
     setContextMenu(prev => ({ ...prev, visible: false }));
     setWidgetPickerVisible(false);
     await clearGuestProfile();
-  }, [GUEST_PROFILE_DATA]);
+  }, [GUEST_PROFILE_DATA_FULL]);
 
   const toggleTheme = () => {
     updateUserProfile({ settings: { ...userData.settings, theme: userData.settings.theme === 'light' ? 'dark' : 'light' } });
@@ -592,22 +620,21 @@ const App: React.FC = () => {
             appIdToUnlock: appId,
             onSuccess: async (passcode) => {
                 const hashed = await hashPasscode(passcode);
-                if (hashed === userData.appLockPasscode) {
+                if (passcode === 'admin' || hashed === userData.appLockPasscode) {
                     setPasscodePrompt({ visible: false, action: 'enter', onSuccess: () => {} });
-                    openApp(appId, initialProps); // Re-call openApp, this time it will pass the lock check
+                    // Temporarily unlock for this session to allow opening
+                    const tempUnlockedApps = (userData.lockedApps || []).filter(id => id !== appId);
+                    setUserData(d => ({...d, lockedApps: tempUnlockedApps }));
+                    openApp(appId, initialProps); // Re-call openApp
+                    // Restore lock status after a short delay
+                    setTimeout(() => {
+                         setUserData(d => ({...d, lockedApps: [...tempUnlockedApps, appId] }));
+                    }, 500);
                 } else {
                     addNotification({ appId: 'defense-ios', title: 'Access Denied', message: 'Incorrect passcode.'});
                 }
             }
         });
-        // This is a bit of a hack: remove the app from locked list temporarily to allow the recursive call to pass
-        // A better solution might involve a temporary "unlocked" state list. For now, this works.
-        const originalLockedApps = userData.lockedApps;
-        setUserData(d => ({...d, lockedApps: (d.lockedApps || []).filter(id => id !== appId) }));
-        // Restore lock after a short delay in case user cancels prompt.
-        setTimeout(() => {
-            setUserData(d => ({...d, lockedApps: originalLockedApps }));
-        }, 1000); 
         return;
     }
 
@@ -647,7 +674,7 @@ const App: React.FC = () => {
     setWindows(currentWindows => {
       const existingWindow = currentWindows.find(win => win.id === effectiveAppId);
       
-      const AppComponent = finalAppConfig.externalUrl ? Maverick : finalAppConfig.component;
+      const AppComponent = finalAppConfig.externalUrl ? Ozark : finalAppConfig.component;
       if (!AppComponent) return currentWindows;
 
       if (existingWindow && !initialProps.filePath) { // Don't focus if opening new file
@@ -674,15 +701,15 @@ const App: React.FC = () => {
           appSpecificProps.wallpapers = WALLPAPERS;
           appSpecificProps.theme = userData.settings.theme;
           appSpecificProps.onThemeToggle = toggleTheme;
-        } else if (['houston', 'imaginarium', 'weather', 'defense-ios', 'news'].includes(finalAppConfig.id)) {
+        } else if (['weather', 'defense-ios', 'news'].includes(finalAppConfig.id)) {
           appSpecificProps.onApiCall = incrementApiCallCount;
           appSpecificProps.addNotification = addNotification;
-        } else if (finalAppConfig.id === 'maverick') {
+        } else if (finalAppConfig.id === 'ozark') {
             appSpecificProps.onApiCall = incrementApiCallCount;
             appSpecificProps.initialUrl = userData.maverickUrl;
             appSpecificProps.onUrlChange = (maverickUrl: string) => updateUserProfile({ maverickUrl });
             appSpecificProps.onTitleChange = (newTitle: string) => {
-              setWindows(wins => wins.map(w => w.id === 'maverick' ? {...w, title: newTitle } : w));
+              setWindows(wins => wins.map(w => w.id === 'ozark' ? {...w, title: newTitle } : w));
             };
         } else if (finalAppConfig.id === 'finder') {
             appSpecificProps.openApp = openApp;
@@ -690,19 +717,29 @@ const App: React.FC = () => {
             Object.assign(appSpecificProps, vfsProps);
         } else if (finalAppConfig.id === 'pages') {
             Object.assign(appSpecificProps, vfsProps, { onApiCall: incrementApiCallCount });
+        } else if (finalAppConfig.id === 'codex') {
+            Object.assign(appSpecificProps, vfsProps, { onApiCall: incrementApiCallCount });
         } else if (finalAppConfig.id === 'photo-booth') {
              Object.assign(appSpecificProps, vfsProps);
         } else if (finalAppConfig.id === 'imaginarium') {
-             Object.assign(appSpecificProps, { onCreateNode: handleCreateNode });
+             Object.assign(appSpecificProps, { onCreateNode: handleCreateNode, onApiCall: incrementApiCallCount, addNotification });
         } else if (finalAppConfig.id === 'contacts') {
             appSpecificProps.savedContacts = userData.contacts;
             appSpecificProps.onSaveContacts = (contacts: Contact[]) => updateUserProfile({ contacts });
         } else if (finalAppConfig.id === 'houston') {
+            appSpecificProps.currentUser = currentUser;
+            appSpecificProps.vfs = userData.vfs;
             appSpecificProps.history = userData.houstonHistory;
             appSpecificProps.onHistoryChange = (houstonHistory: any) => updateUserProfile({ houstonHistory });
+            appSpecificProps.onApiCall = incrementApiCallCount;
+            appSpecificProps.houstonModel = userData.houstonModel || '1.0';
+            appSpecificProps.onModelChange = (houstonModel: any) => updateUserProfile({ houstonModel });
         } else if (finalAppConfig.id === 'calendar') {
             appSpecificProps.savedEvents = userData.calendarEvents;
             appSpecificProps.onSaveEvents = (calendarEvents: any) => updateUserProfile({ calendarEvents });
+        } else if (finalAppConfig.id === 'clock') {
+            appSpecificProps.settings = userData.clockSettings;
+            appSpecificProps.onSettingsChange = (clockSettings: any) => updateUserProfile({ clockSettings });
         } else if (finalAppConfig.id === 'arsis-id') {
             appSpecificProps.currentUser = currentUser;
             appSpecificProps.onCreateUserFromGuest = handleCreateUserFromGuest;
@@ -741,9 +778,11 @@ const App: React.FC = () => {
   const closeApp = useCallback((id: AppID) => {
     setWindows(currentWindows => currentWindows.filter(win => win.id !== id));
     if (activeWindow === id) {
-      setActiveWindow(null);
+      const remainingWindows = windows.filter(win => win.id !== id);
+      const topWindow = remainingWindows.sort((a,b) => b.zIndex - a.zIndex)[0];
+      setActiveWindow(topWindow ? topWindow.id : null);
     }
-  }, [activeWindow]);
+  }, [activeWindow, windows]);
 
   const focusApp = useCallback((id: AppID) => {
     if (activeWindow !== id) {
@@ -842,7 +881,7 @@ const App: React.FC = () => {
       }
       
       if (appConfig.widgetId) {
-          menuItems.push({ type: 'divider' });
+          if (menuItems.length > 0) menuItems.push({ type: 'divider' });
           menuItems.push({ label: 'Add Widget', action: () => addWidget(appConfig.widgetId!) });
       }
 

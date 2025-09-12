@@ -68,6 +68,8 @@ const urlsToCache = [
   './apps/SystemMonitor.tsx',
   './apps/Contacts.tsx',
   './apps/News.tsx',
+  './apps/Clock.tsx',
+  './apps/Codex.tsx',
   
   // CDN resources
   'https://aistudiocdn.com/react@^19.1.1',

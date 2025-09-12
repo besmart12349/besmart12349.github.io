@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { useSecurity } from '../contexts/SecurityContext';
@@ -21,7 +18,7 @@ const prepareHtml = (htmlString: string, baseUrl: string): string => {
   return doc.documentElement.outerHTML;
 };
 
-interface MaverickProps {
+interface OzarkProps {
     initialUrl: string;
     onUrlChange: (url: string) => void;
     onApiCall?: () => void;
@@ -33,7 +30,7 @@ const ForwardIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h
 const RefreshIcon: React.FC<{isLoading: boolean}> = ({ isLoading }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5m7 10v-5h-5M20 12c0-4.418-3.582-8-8-8s-8 3.582-8 8 3.582 8 8 8 8-3.582 8-8z" /></svg> );
 
 
-const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall, onTitleChange }) => {
+const Ozark: React.FC<OzarkProps> = ({ initialUrl, onUrlChange, onApiCall, onTitleChange }) => {
   const createNewTab = (url: string, content: string | null = null, title: string = 'New Tab'): TabState => ({
     id: Date.now(),
     title,
@@ -64,7 +61,7 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
   }, [activeTab, onTitleChange]);
 
   useEffect(() => {
-    if (activeTab && !activeTab.content && !activeTab.error) {
+    if (activeTab && !activeTab.content && !activeTab.error && !activeTab.isLoading) {
         navigate(activeTab.url, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,19 +215,22 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
         const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
 
         const summaryHtml = `<body style="background-color: #1a1a1a; color: white; font-family: sans-serif; padding: 2rem;"><h2>AI Summary of: ${activeTab.title}</h2>${response.text}</body>`;
-
-        const currentTabs = [...tabs];
-        const newTab = createNewTab('about:summary', summaryHtml, `Summary: ${activeTab.title}`);
-        setTabs([...currentTabs, newTab]);
-        setActiveTabId(newTab.id);
         
+        // Find the temporary tab and update it
+        const tempTab = tabs.find(t => t.title === tempTabTitle);
+        if (tempTab) {
+            updateTabState(tempTab.id, { content: summaryHtml, title: `Summary: ${activeTab.title}`, url: 'about:summary' });
+            setActiveTabId(tempTab.id);
+        }
+
     } catch(e) {
         console.error("Summarization failed:", e);
         const errorHtml = `<body style="background-color: #1a1a1a; color: red; font-family: sans-serif; padding: 2rem;"><h2>Summarization Failed</h2><p>Could not generate a summary for this page.</p></body>`;
-        const currentTabs = [...tabs];
-        const newTab = createNewTab('about:error', errorHtml, 'Error');
-        setTabs([...currentTabs, newTab]);
-        setActiveTabId(newTab.id);
+        const tempTab = tabs.find(t => t.title === tempTabTitle);
+        if (tempTab) {
+            updateTabState(tempTab.id, { content: errorHtml, title: 'Error', url: 'about:error' });
+            setActiveTabId(tempTab.id);
+        }
     }
   };
 
@@ -306,7 +306,7 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
                 key={tab.id}
                 srcDoc={tab.content || ''}
                 className={`w-full h-full border-0 transition-opacity duration-300 ${activeTab?.id !== tab.id ? 'hidden' : ''} ${tab.isLoading || tab.error ? 'opacity-0' : 'opacity-100'}`}
-                title="Maverick Browser"
+                title="Ozark Browser"
                 sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
             />
         ))}
@@ -315,4 +315,4 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
   );
 };
 
-export default Maverick;
+export default Ozark;

@@ -33,16 +33,30 @@ declare global {
     values(): AsyncIterableIterator<FileSystemFileHandle | FileSystemDirectoryHandle>;
   }
 
+  // FIX: Add type definitions for Web Speech API to resolve 'SpeechRecognition' not found error.
+  interface SpeechRecognition extends EventTarget {
+      continuous: boolean;
+      interimResults: boolean;
+      lang: string;
+      start(): void;
+      stop(): void;
+      onresult: (event: any) => void;
+      onerror: (event: any) => void;
+      onend: () => void;
+  }
+
   interface Window {
     showOpenFilePicker(options?: any): Promise<FileSystemFileHandle[]>;
     showSaveFilePicker(options?: any): Promise<FileSystemFileHandle>;
     showDirectoryPicker(options?: any): Promise<FileSystemDirectoryHandle>;
     // Add this for PWA install prompt
     onbeforeinstallprompt: ((this: Window, ev: BeforeInstallPromptEvent) => any) | null;
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
   }
 }
 
-export type AppID = 'pages' | 'terminal' | 'weather' | 'finder' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | 'news' | string;
+export type AppID = 'pages' | 'terminal' | 'weather' | 'finder' | 'calculator' | 'ozark' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | 'news' | 'clock' | 'codex' | string;
 
 export interface Shortcut {
   id: string; // A unique ID, e.g., timestamp
@@ -136,12 +150,21 @@ export interface CalendarEvent {
     notified?: boolean;
 }
 
+export interface Alarm {
+    id: number;
+    time: string; // HH:MM
+    label: string;
+    enabled: boolean;
+    notifiedForToday?: boolean;
+}
+
 export interface HoustonMessage {
     sender: 'user' | 'houston';
     text: string;
+    file?: { name: string; content: string };
 }
 
-export type WidgetComponentID = 'weather-widget' | 'stocks-widget' | 'news-widget' | 'calendar-widget';
+export type WidgetComponentID = 'weather-widget' | 'stocks-widget' | 'news-widget' | 'calendar-widget' | 'clock-widget';
 
 export interface WidgetConfig {
     id: WidgetComponentID;
@@ -227,6 +250,11 @@ export interface UserProfileData {
         wallpaper: string;
         theme: 'light' | 'dark';
     };
+    clockSettings: {
+        use24Hour: boolean;
+        timezones: string[];
+        alarms: Alarm[];
+    };
     installedExternalApps?: AppID[];
     installedLocalApps?: InstalledApp[];
     shortcuts: Shortcut[];
@@ -236,6 +264,7 @@ export interface UserProfileData {
     lockedApps?: AppID[];
     appLockPasscode?: string | null;
     hiddenInDock?: AppID[];
+    houstonModel?: '1.0' | '1.5' | '2.0-pro';
 }
 
 // --- WEATHER TYPES ---

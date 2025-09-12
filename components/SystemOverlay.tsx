@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import { MacetaraLogo, SleepIcon, WeatherIcon, StocksIcon, XIcon, NewsIcon, CalendarIcon } from './Icons';
-import type { WidgetConfig, WidgetComponentID, UserProfileData, NewsArticle } from '../types';
+import { MacetaraLogo, SleepIcon, WeatherIcon, StocksIcon, XIcon, NewsIcon, CalendarIcon, ClockIcon } from './Icons';
+import type { WidgetConfig, WidgetComponentID, UserProfileData, NewsArticle, Alarm } from '../types';
 import { useDraggable } from '../hooks/useDraggable';
 import { API_KEY } from '../config';
 
@@ -200,12 +199,54 @@ export const CalendarWidget: React.FC<{ userData: UserProfileData }> = ({ userDa
     );
 };
 
+export const ClockWidget: React.FC<{ userData: UserProfileData }> = ({ userData }) => {
+    const [time, setTime] = useState(new Date());
+    const use24Hour = userData.clockSettings?.use24Hour || false;
+
+    useEffect(() => {
+        const timerId = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timerId);
+    }, []);
+
+    const timeString = time.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: !use24Hour,
+    });
+    
+    const upcomingAlarm = (userData.clockSettings?.alarms || [])
+        .filter(a => a.enabled)
+        .sort((a,b) => a.time.localeCompare(b.time))
+        .find(a => {
+            const [alarmHour, alarmMinute] = a.time.split(':').map(Number);
+            return alarmHour > time.getHours() || (alarmHour === time.getHours() && alarmMinute > time.getMinutes());
+        });
+
+    return (
+        <div className="h-full flex flex-col text-center justify-between">
+            <div>
+                <ClockIcon className="w-8 h-8 mx-auto text-yellow-300" />
+                <p className="text-5xl font-semibold mt-2">{timeString}</p>
+                <p className="text-sm text-gray-300">{time.toLocaleDateString([], { weekday: 'long' })}</p>
+            </div>
+            <div className="text-xs text-gray-400 border-t border-white/20 pt-2 mt-2">
+                {upcomingAlarm ? (
+                    <span>Next Alarm: {upcomingAlarm.time} - {upcomingAlarm.label}</span>
+                ) : (
+                    <span>No upcoming alarms</span>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 export const WIDGETS: WidgetConfig[] = [
     { id: 'weather-widget', title: 'Weather', component: WeatherWidget, defaultSize: { width: 200, height: 200 } },
     { id: 'stocks-widget', title: 'Stocks', component: StocksWidget, defaultSize: { width: 200, height: 200 } },
     { id: 'news-widget', title: 'News', component: NewsWidget, defaultSize: { width: 250, height: 200 } },
     { id: 'calendar-widget', title: 'Calendar', component: CalendarWidget, defaultSize: { width: 200, height: 200 } },
+    { id: 'clock-widget', title: 'Clock', component: ClockWidget, defaultSize: { width: 220, height: 200 } },
 ];
 
 interface WidgetPickerProps {

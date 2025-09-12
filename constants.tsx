@@ -1,11 +1,11 @@
 import React from 'react';
-import type { AppConfig, VFS } from './types';
+import type { AppConfig, UserProfileData, VFS } from './types';
 import Pages from './apps/Notes';
 import Terminal from './apps/Terminal';
 import Weather from './apps/Weather';
 import Finder from './apps/MyDocs';
 import Calculator from './apps/Calculator';
-import Maverick from './apps/Maverick';
+import Ozark from './apps/Maverick';
 import About from './apps/About';
 import Stocks from './apps/Stocks';
 import Houston from './apps/Houston';
@@ -23,6 +23,8 @@ import Shortcuts from './apps/Shortcuts';
 import SystemMonitor from './apps/SystemMonitor';
 import Contacts from './apps/Contacts';
 import News from './apps/News';
+import Clock from './apps/Clock';
+import Codex from './apps/Codex';
 
 import { 
     PagesIcon, 
@@ -30,7 +32,7 @@ import {
     WeatherIcon, 
     FinderIcon, 
     CalculatorIcon, 
-    MaverickIcon,
+    OzarkIcon,
     AboutIcon,
     StocksIcon,
     HoustonIcon,
@@ -59,17 +61,21 @@ import {
     TrelloIcon,
     ContactsIcon,
     NewsIcon,
+    ClockIcon,
+    CodexIcon,
 } from './components/Icons';
 
 export const APPS: AppConfig[] = [
   // User-specified order
   { id: 'finder', title: 'Finder', icon: FinderIcon, component: Finder, width: 700, height: 500, onDesktop: true },
-  { id: 'maverick', title: 'Maverick', icon: MaverickIcon, component: Maverick, width: 1024, height: 768 },
+  { id: 'ozark', title: 'Ozark', icon: OzarkIcon, component: Ozark, width: 1024, height: 768 },
+  { id: 'codex', title: 'Codex', icon: CodexIcon, component: Codex, width: 1100, height: 700 },
   { id: 'news', title: 'Helios News', icon: NewsIcon, component: News, width: 900, height: 600, widgetId: 'news-widget' },
   { id: 'contacts', title: 'Contacts', icon: ContactsIcon, component: Contacts, width: 750, height: 500 },
-  { id: 'houston', title: 'Houston', icon: HoustonIcon, component: Houston, width: 500, height: 700, onDesktop: true },
+  { id: 'houston', title: 'Houston', icon: HoustonIcon, component: Houston, width: 600, height: 700, onDesktop: true },
   { id: 'terminal', title: 'Terminal', icon: TerminalIcon, component: Terminal, width: 680, height: 420, showInDock: false },
   { id: 'calendar', title: 'Calendar', icon: CalendarIcon, component: Calendar, width: 700, height: 550, widgetId: 'calendar-widget' },
+  { id: 'clock', title: 'Clock', icon: ClockIcon, component: Clock, width: 600, height: 400, widgetId: 'clock-widget' },
   { id: 'imaginarium', title: 'Imaginarium', icon: ImaginariumIcon, component: Imaginarium, width: 800, height: 600 },
   { id: 'weather', title: 'Weather', icon: WeatherIcon, component: Weather, width: 400, height: 600, widgetId: 'weather-widget' },
   { id: 'calculator', title: 'Calculator', icon: CalculatorIcon, component: Calculator, width: 360, height: 580 },
@@ -100,7 +106,7 @@ export const EXTERNAL_APPS: AppConfig[] = [
     title: 'Web Viewer', 
     icon: ChromeIcon, 
     externalUrl: 'https://www.google.com/webhp?igu=1',
-    description: 'A simple web browser for navigating your favorite sites, powered by the secure Maverick engine.',
+    description: 'A simple web browser for navigating your favorite sites, powered by the secure Ozark engine.',
     width: 1024,
     height: 768,
   },
@@ -272,4 +278,25 @@ export const createInitialVFS = (): VFS => {
             }
         }
     };
+};
+
+export const GUEST_PROFILE_DATA: Omit<UserProfileData, 'vfs' | 'settings'> = {
+    calendarEvents: {},
+    houstonHistory: [{ sender: 'houston', text: "Hello! I'm Houston, your AI assistant. How can I help you today?" }],
+    maverickUrl: 'https://besmart12349.github.io/maverick2.github.io/',
+    clockSettings: {
+        use24Hour: false,
+        timezones: ['America/New_York', 'Europe/London', 'Asia/Tokyo'],
+        alarms: [],
+    },
+    installedExternalApps: [],
+    installedLocalApps: [],
+    shortcuts: [],
+    widgets: [],
+    contacts: [],
+    watchedStocks: ['AAPL', 'GOOGL', 'MSFT', 'TSLA'],
+    lockedApps: [],
+    appLockPasscode: null,
+    hiddenInDock: [],
+    houstonModel: '1.0',
 };
