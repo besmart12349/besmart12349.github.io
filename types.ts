@@ -42,7 +42,7 @@ declare global {
   }
 }
 
-export type AppID = 'pages' | 'terminal' | 'weather' | 'finder' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | string;
+export type AppID = 'pages' | 'terminal' | 'weather' | 'finder' | 'calculator' | 'maverick' | 'about' | 'stocks' | 'houston' | 'settings' | 'imaginarium' | 'calendar' | 'music' | 'photo-booth' | 'launchpad' | 'arsis-id' | 'defense-ios' | 'network-info' | 'installer' | 'app-store' | 'chrome-viewer' | 'steam-store' | 'game-2048' | 'spotify' | 'photopea' | 'bbc-news' | 'shortcuts' | 'contacts' | 'news' | string;
 
 export interface Shortcut {
   id: string; // A unique ID, e.g., timestamp
@@ -78,6 +78,7 @@ export interface AppConfig {
   externalUrl?: string;
   description?: string;
   uri?: string; // For native app shortcuts
+  widgetId?: WidgetComponentID;
 }
 
 export interface WindowState {
@@ -140,7 +141,7 @@ export interface HoustonMessage {
     text: string;
 }
 
-export type WidgetComponentID = 'weather-widget' | 'stocks-widget';
+export type WidgetComponentID = 'weather-widget' | 'stocks-widget' | 'news-widget' | 'calendar-widget';
 
 export interface WidgetConfig {
     id: WidgetComponentID;
@@ -234,6 +235,7 @@ export interface UserProfileData {
     watchedStocks?: string[];
     lockedApps?: AppID[];
     appLockPasscode?: string | null;
+    hiddenInDock?: AppID[];
 }
 
 // --- WEATHER TYPES ---
@@ -265,4 +267,11 @@ export interface StockData {
   price: number;
   change: number;
   changePercent: number;
+}
+
+// --- NEWS TYPES ---
+export interface NewsArticle {
+    title: string;
+    source: string;
+    summary: string;
 }

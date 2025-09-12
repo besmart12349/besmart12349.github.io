@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import type { AppID } from '../types';
 import { useDraggable } from '../hooks/useDraggable';
@@ -11,9 +12,10 @@ interface DesktopIconProps {
   onOpen: () => void;
   initialPosition: { x: number, y: number };
   onPositionChange: (position: { x: number, y: number }) => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
 }
 
-const DesktopIcon: React.FC<DesktopIconProps> = ({ id, title, IconComponent, onOpen, initialPosition, onPositionChange }) => {
+const DesktopIcon: React.FC<DesktopIconProps> = ({ id, title, IconComponent, onOpen, initialPosition, onPositionChange, onContextMenu }) => {
   const { position, dragRef, onMouseDown } = useDraggable(initialPosition, undefined, onPositionChange, 80);
   
   return (
@@ -28,6 +30,7 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ id, title, IconComponent, onO
       className="flex flex-col items-center space-y-1 cursor-pointer group w-20 text-center"
       onMouseDown={onMouseDown}
       onDoubleClick={onOpen}
+      onContextMenu={onContextMenu}
     >
       <div className="w-16 h-16 p-1 rounded-lg group-hover:bg-white/20 dark:group-hover:bg-black/20 transition-colors flex items-center justify-center">
         <IconComponent className="w-12 h-12 drop-shadow-lg" />

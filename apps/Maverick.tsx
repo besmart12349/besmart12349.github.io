@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { useSecurity } from '../contexts/SecurityContext';
@@ -73,8 +74,13 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
   const navigate = async (urlToLoad: string, isHistoryNavigation = false) => {
     if (!activeTab) return;
 
-    let finalUrl = urlToLoad;
-    if (!/^https?:\/\//i.test(finalUrl) && !finalUrl.startsWith('about:blank')) {
+    let finalUrl = urlToLoad.trim();
+    // Check if it's a search query or a URL
+    const isUrl = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(finalUrl) || finalUrl.startsWith("about:") || finalUrl.startsWith("data:");
+    
+    if (!isUrl) {
+      finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+    } else if (!/^https?:\/\//i.test(finalUrl) && !finalUrl.startsWith("about:") && !finalUrl.startsWith("data:")) {
       finalUrl = 'https://' + finalUrl;
     }
     
@@ -127,7 +133,12 @@ const Maverick: React.FC<MaverickProps> = ({ initialUrl, onUrlChange, onApiCall,
 
         try {
             const ai = new GoogleGenAI({ apiKey: API_KEY });
-            const prompt = `You are X-Factor Bypass, an AI that reconstructs web pages when direct access fails. Analyze the content from the URL "${finalUrl}" and generate a simplified but functional HTML representation of the page. Focus on the main text, headings, links, and general layout. If you cannot access the URL, state that. Do not include any of your own commentary, only return the HTML code. Style the page to be readable with a dark theme background (#1a1a1a) and light text.`;
+            const prompt = `You are X-Factor Bypass, an AI that reconstructs web pages when direct access fails. Your task is to generate a complete, single HTML file based on the likely content of the URL "${finalUrl}".
+- Structure the page logically with semantic HTML (<header>, <nav>, <main>, <article>, <footer>, etc.).
+- The content should be a plausible representation of what would be on that page. Focus on text, headings, links, and layout.
+- Style the page directly in a <style> tag in the <head>. Use a clean, modern, dark theme (e.g., body { background-color: #1a1a1a; color: #f0f0f0; font-family: sans-serif; }).
+- If you cannot access the URL or determine its content, return an HTML page stating that the content could not be reconstructed.
+- IMPORTANT: Do not include any of your own commentary, warnings, or explanations. The output must be ONLY the HTML code, starting with <!DOCTYPE html>.`;
             const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
             const preparedHtml = prepareHtml(response.text, finalUrl);
             updateTabState(activeTab.id, { content: preparedHtml, isLoading: false, title: `AI View: ${finalUrl}` });

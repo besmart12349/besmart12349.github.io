@@ -1,8 +1,10 @@
 
-import React from 'react';
-import { MacetaraLogo, SleepIcon, WeatherIcon, StocksIcon, XIcon } from './Icons';
-import type { WidgetConfig, WidgetComponentID } from '../types';
+import React, { useState, useEffect } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+import { MacetaraLogo, SleepIcon, WeatherIcon, StocksIcon, XIcon, NewsIcon, CalendarIcon } from './Icons';
+import type { WidgetConfig, WidgetComponentID, UserProfileData, NewsArticle } from '../types';
 import { useDraggable } from '../hooks/useDraggable';
+import { API_KEY } from '../config';
 
 // --- SYSTEM ACTIONS ---
 
@@ -132,9 +134,78 @@ export const StocksWidget: React.FC = () => (
     </div>
 );
 
+export const NewsWidget: React.FC = () => {
+    const [headlines, setHeadlines] = useState<NewsArticle[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHeadlines = async () => {
+            try {
+                const ai = new GoogleGenAI({ apiKey: API_KEY });
+                const response = await ai.models.generateContent({
+                    model: 'gemini-2.5-flash',
+                    contents: "Provide the top 3 latest world news headlines.",
+                    config: { responseMimeType: "application/json", responseSchema: {
+                        type: Type.ARRAY, items: { type: Type.OBJECT, properties: {
+                            title: { type: Type.STRING }, source: { type: Type.STRING }, summary: { type: Type.STRING }
+                        }}}
+                    }
+                });
+                setHeadlines(JSON.parse(response.text));
+            } catch (e) { console.error("News Widget Error:", e); } 
+            finally { setIsLoading(false); }
+        };
+        fetchHeadlines();
+    }, []);
+
+    return (
+        <div className="h-full flex flex-col">
+            <h3 className="font-bold text-lg text-center border-b border-white/20 pb-1 mb-2 flex items-center justify-center space-x-2"><NewsIcon className="w-5 h-5" /> <span>Top Stories</span></h3>
+            {isLoading ? <div className="text-xs text-center text-gray-400">Loading...</div> : (
+                <div className="space-y-2 overflow-hidden">
+                    {headlines.map((item, i) => (
+                        <div key={i} className="text-xs">
+                            <p className="font-semibold truncate">{item.title}</p>
+                            <p className="text-gray-300 truncate">{item.source}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export const CalendarWidget: React.FC<{ userData: UserProfileData }> = ({ userData }) => {
+    const today = new Date();
+    const dateKey = today.toISOString().split('T')[0];
+    const eventsToday = userData.calendarEvents?.[dateKey] || [];
+    
+    return (
+        <div className="h-full flex flex-col text-center">
+            <div className="bg-red-500 rounded-t-lg -m-4 mb-2 p-1">
+                <p className="text-xs font-bold uppercase">{today.toLocaleString('default', { month: 'short' })}</p>
+            </div>
+            <p className="text-4xl font-bold">{today.getDate()}</p>
+            <p className="text-sm text-gray-300 mb-2">{today.toLocaleString('default', { weekday: 'long' })}</p>
+            <div className="border-t border-white/20 flex-grow pt-2 text-left text-xs space-y-1 overflow-y-auto">
+                {eventsToday.length > 0 ? (
+                    eventsToday.map(event => (
+                        <div key={event.id} className="truncate">
+                            <span className="font-semibold">{event.time}</span> {event.text}
+                        </div>
+                    ))
+                ) : <p className="text-center text-gray-400">No events today</p>}
+            </div>
+        </div>
+    );
+};
+
+
 export const WIDGETS: WidgetConfig[] = [
     { id: 'weather-widget', title: 'Weather', component: WeatherWidget, defaultSize: { width: 200, height: 200 } },
     { id: 'stocks-widget', title: 'Stocks', component: StocksWidget, defaultSize: { width: 200, height: 200 } },
+    { id: 'news-widget', title: 'News', component: NewsWidget, defaultSize: { width: 250, height: 200 } },
+    { id: 'calendar-widget', title: 'Calendar', component: CalendarWidget, defaultSize: { width: 200, height: 200 } },
 ];
 
 interface WidgetPickerProps {

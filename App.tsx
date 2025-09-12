@@ -5,7 +5,7 @@ import Dock from './components/Dock';
 import Window from './components/Window';
 import DesktopIcon from './components/DesktopIcon';
 import { SystemOverlay, WidgetPicker, WidgetContainer, WIDGETS } from './components/SystemOverlay';
-import ContextMenu from './components/ContextMenu';
+import ContextMenu, { ContextMenuItem } from './components/ContextMenu';
 import MissionControl from './components/MissionControl';
 import Spotlight from './components/Spotlight';
 import Launchpad from './components/Launchpad';
@@ -30,6 +30,7 @@ interface ContextMenuState {
   x: number;
   y: number;
   visible: boolean;
+  items: ContextMenuItem[];
 }
 
 interface PasscodePromptState {
@@ -85,7 +86,7 @@ const App: React.FC = () => {
   const [activeWindow, setActiveWindow] = useState<AppID | null>(null);
   const [nextZIndex, setNextZIndex] = useState(10);
   const [systemAction, setSystemAction] = useState<'restart' | 'shutdown' | 'sleep' | null>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false, items: [] });
   const [isMissionControlActive, setMissionControlActive] = useState(false);
   const [apiCallCount, setApiCallCount] = useState(0);
   const [isSpotlightVisible, setSpotlightVisible] = useState(false);
@@ -125,6 +126,7 @@ const App: React.FC = () => {
     watchedStocks: ['AAPL', 'GOOGL', 'MSFT', 'TSLA'],
     lockedApps: [],
     appLockPasscode: null,
+    hiddenInDock: [],
   }), []);
 
     // Memoize admin profile data
@@ -168,10 +170,11 @@ const App: React.FC = () => {
       return [...APPS, ...installedAppsConfigs, ...shortcutApps, ...localApps];
   }, [userData.installedExternalApps, userData.shortcuts, userData.installedLocalApps]);
   
-  // Update dock apps when allApps changes
+  // Update dock apps when allApps or hiddenInDock changes
   useEffect(() => {
-      setDockApps(allApps.filter(app => app.showInDock !== false));
-  }, [allApps]);
+    const hidden = userData.hiddenInDock || [];
+    setDockApps(allApps.filter(app => app.showInDock !== false && !hidden.includes(app.id)));
+  }, [allApps, userData.hiddenInDock]);
 
   // --- API / Persistence Logic ---
   const updateUserProfile = useCallback(async (updates: Partial<UserProfileData>) => {
@@ -671,7 +674,7 @@ const App: React.FC = () => {
           appSpecificProps.wallpapers = WALLPAPERS;
           appSpecificProps.theme = userData.settings.theme;
           appSpecificProps.onThemeToggle = toggleTheme;
-        } else if (['houston', 'imaginarium', 'weather', 'defense-ios'].includes(finalAppConfig.id)) {
+        } else if (['houston', 'imaginarium', 'weather', 'defense-ios', 'news'].includes(finalAppConfig.id)) {
           appSpecificProps.onApiCall = incrementApiCallCount;
           appSpecificProps.addNotification = addNotification;
         } else if (finalAppConfig.id === 'maverick') {
@@ -786,14 +789,71 @@ const App: React.FC = () => {
     focusApp(id);
   }, [focusApp]);
   
-  const handleDesktopContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, visible: true });
-  };
-
   const closeContextMenu = () => {
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
+  
+  const handleDesktopContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    closeContextMenu(); // Close any existing menu
+    setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        visible: true,
+        items: [
+            { label: 'Change Background...', action: () => openApp('settings') },
+            { type: 'divider' },
+            { label: 'Add Widget...', action: () => setWidgetPickerVisible(true) },
+        ]
+    });
+  };
+  
+  const handleToggleDockVisibility = (appId: AppID) => {
+    const currentHidden = userData.hiddenInDock || [];
+    const isHidden = currentHidden.includes(appId);
+    const newHidden = isHidden ? currentHidden.filter(id => id !== appId) : [...currentHidden, appId];
+    updateUserProfile({ hiddenInDock: newHidden });
+  };
+  
+  const handleAppIconContextMenu = (e: React.MouseEvent, node: VFSApp) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeContextMenu();
+      
+      const { appId } = node.meta;
+      const appConfig = allApps.find(app => app.id === appId);
+      if (!appConfig) return;
+
+      const isRunning = windows.some(win => win.id === appId);
+      const isHidden = (userData.hiddenInDock || []).includes(appId);
+      
+      const menuItems: ContextMenuItem[] = [];
+
+      if (isRunning) {
+          menuItems.push({ label: 'Force Quit', action: () => closeApp(appId) });
+      }
+      
+      // Don't allow locking/hiding finder
+      if (appId !== 'finder') {
+          menuItems.push({ label: (userData.lockedApps || []).includes(appId) ? 'Unlock' : 'Lock', action: () => handleToggleAppLock(appId) });
+           if (appConfig.showInDock !== false) {
+             menuItems.push({ label: isHidden ? 'Show in Dock' : 'Hide in Dock', action: () => handleToggleDockVisibility(appId) });
+           }
+      }
+      
+      if (appConfig.widgetId) {
+          menuItems.push({ type: 'divider' });
+          menuItems.push({ label: 'Add Widget', action: () => addWidget(appConfig.widgetId!) });
+      }
+
+      setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          visible: true,
+          items: menuItems
+      });
+  };
+
 
   const handleRestart = () => setSystemAction('restart');
   const handleShutdown = () => setSystemAction('shutdown');
@@ -816,6 +876,7 @@ const App: React.FC = () => {
   const closeSystemMenus = () => {
     setControlCenterVisible(false);
     setNotificationCenterVisible(false);
+    closeContextMenu();
   }
   
   const desktopItems = useMemo(() => {
@@ -823,7 +884,8 @@ const App: React.FC = () => {
     if (!desktopNode || desktopNode.type !== 'directory') return [];
     
     return Object.values(desktopNode.children).map(node => {
-        const appId = node.type === 'app' ? (node as VFSApp).meta.appId : 'finder';
+        const isApp = node.type === 'app';
+        const appId = isApp ? (node as VFSApp).meta.appId : 'finder';
         const appConfig = allApps.find(app => app.id === appId);
 
         return {
@@ -831,9 +893,10 @@ const App: React.FC = () => {
             title: node.name,
             IconComponent: appConfig?.icon || TerminalIcon,
             position: node.meta?.iconPosition || { x: 50, y: 50 },
-            onOpen: () => node.type === 'app' 
+            onOpen: () => isApp 
                 ? openApp((node as VFSApp).meta.appId) 
-                : openApp('finder', { filePath: `/Desktop/${node.name}` })
+                : openApp('finder', { filePath: `/Desktop/${node.name}` }),
+            onContextMenu: isApp ? (e: React.MouseEvent) => handleAppIconContextMenu(e, node as VFSApp) : undefined
         };
     });
   }, [userData.vfs, allApps, openApp]);
@@ -885,6 +948,7 @@ const App: React.FC = () => {
                     onOpen={item.onOpen}
                     initialPosition={item.position}
                     onPositionChange={(newPosition) => handleIconPositionChange(item.id, newPosition)}
+                    onContextMenu={item.onContextMenu}
                   />
               ))}
               
@@ -901,7 +965,7 @@ const App: React.FC = () => {
                           onPositionChange={(newPos) => handleWidgetPositionChange(widget.instanceId, newPos)}
                           onRemove={removeWidget}
                       >
-                          <WidgetComponent />
+                          <WidgetComponent userData={userData} />
                       </WidgetContainer>
                   )
               })}
@@ -1006,9 +1070,8 @@ const App: React.FC = () => {
                 x={contextMenu.x}
                 y={contextMenu.y}
                 visible={contextMenu.visible}
+                items={contextMenu.items}
                 onClose={closeContextMenu}
-                onItemClick={() => openApp('settings')}
-                onAddWidgetClick={() => setWidgetPickerVisible(true)}
               />
               
               <div className="absolute top-8 right-4 space-y-2 z-[70]">

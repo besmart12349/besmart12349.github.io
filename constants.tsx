@@ -22,6 +22,7 @@ import AppStore from './apps/AppStore';
 import Shortcuts from './apps/Shortcuts';
 import SystemMonitor from './apps/SystemMonitor';
 import Contacts from './apps/Contacts';
+import News from './apps/News';
 
 import { 
     PagesIcon, 
@@ -57,20 +58,22 @@ import {
     YouTubeIcon,
     TrelloIcon,
     ContactsIcon,
+    NewsIcon,
 } from './components/Icons';
 
 export const APPS: AppConfig[] = [
   // User-specified order
   { id: 'finder', title: 'Finder', icon: FinderIcon, component: Finder, width: 700, height: 500, onDesktop: true },
   { id: 'maverick', title: 'Maverick', icon: MaverickIcon, component: Maverick, width: 1024, height: 768 },
+  { id: 'news', title: 'Helios News', icon: NewsIcon, component: News, width: 900, height: 600, widgetId: 'news-widget' },
   { id: 'contacts', title: 'Contacts', icon: ContactsIcon, component: Contacts, width: 750, height: 500 },
   { id: 'houston', title: 'Houston', icon: HoustonIcon, component: Houston, width: 500, height: 700, onDesktop: true },
   { id: 'terminal', title: 'Terminal', icon: TerminalIcon, component: Terminal, width: 680, height: 420, showInDock: false },
-  { id: 'calendar', title: 'Calendar', icon: CalendarIcon, component: Calendar, width: 700, height: 550 },
+  { id: 'calendar', title: 'Calendar', icon: CalendarIcon, component: Calendar, width: 700, height: 550, widgetId: 'calendar-widget' },
   { id: 'imaginarium', title: 'Imaginarium', icon: ImaginariumIcon, component: Imaginarium, width: 800, height: 600 },
-  { id: 'weather', title: 'Weather', icon: WeatherIcon, component: Weather, width: 400, height: 600 },
+  { id: 'weather', title: 'Weather', icon: WeatherIcon, component: Weather, width: 400, height: 600, widgetId: 'weather-widget' },
   { id: 'calculator', title: 'Calculator', icon: CalculatorIcon, component: Calculator, width: 360, height: 580 },
-  { id: 'stocks', title: 'Stocks', icon: StocksIcon, component: Stocks, width: 400, height: 600 },
+  { id: 'stocks', title: 'Stocks', icon: StocksIcon, component: Stocks, width: 400, height: 600, widgetId: 'stocks-widget' },
   { id: 'pages', title: 'Pages', icon: PagesIcon, component: Pages, width: 700, height: 500 },
   { id: 'music', title: 'Music', icon: MusicIcon, component: Music, width: 600, height: 400 },
   { id: 'photo-booth', title: 'Photo Booth', icon: PhotoBoothIcon, component: PhotoBooth, width: 720, height: 600 },
