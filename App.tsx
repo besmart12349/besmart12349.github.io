@@ -14,10 +14,12 @@ import LoginScreen from './components/LoginScreen';
 import ControlCenter from './components/ControlCenter';
 import NotificationCenter from './components/NotificationCenter';
 import NotificationToast from './components/NotificationToast';
+import PasscodePrompt from './components/PasscodePrompt';
 import { MusicProvider } from './contexts/MusicContext';
 import { SecurityProvider } from './contexts/SecurityContext';
 import { APPS, EXTERNAL_APPS, API_CALL_LIMIT, SHORTCUT_ICONS, LOCAL_APP_COMPONENTS, LOCAL_APP_ICONS, createInitialVFS } from './constants';
 import { loginOrCreateUser, saveUserProfile, createUser } from './services/userProfile';
+import { saveGuestProfile, getGuestProfile, clearGuestProfile } from './services/localDbService';
 import type { AppID, WindowState, AppConfig, Notification, UserProfileData, Shortcut, InstalledApp, WidgetState, WidgetComponentID, Contact, VFSNode, VFS, VFSDirectory, VFSFile, VFSApp } from './types';
 import ApiMonitorWidget from './components/ApiMonitorWidget';
 import Maverick from './apps/Maverick';
@@ -30,6 +32,14 @@ interface ContextMenuState {
   visible: boolean;
 }
 
+interface PasscodePromptState {
+  visible: boolean;
+  action: 'set' | 'enter';
+  appIdToUnlock?: AppID;
+  onSuccess: (passcode: string) => void;
+}
+
+
 const WALLPAPERS = [
   'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1920&q=80',
   'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1920&q=80',
@@ -39,27 +49,31 @@ const WALLPAPERS = [
   'https://images.unsplash.com/photo-1483728642387-6c351b40b7de?auto=format&fit=crop&w=1920&q=80',
 ];
 
+// --- Hashing Utility ---
+const hashPasscode = async (passcode: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(passcode);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 // --- VFS UTILITY FUNCTIONS ---
 const findVFSNode = (vfs: VFSDirectory, path: string): VFSNode | null => {
+    if (path === '/') return vfs;
     const parts = path.split('/').filter(p => p);
-    let currentNode: VFSDirectory = vfs;
+    let currentNode: VFSNode = vfs;
 
-    for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        const childNode = Object.values(currentNode.children).find(c => c.name === part);
-
-        if (!childNode) return null;
-
-        if (childNode.type === 'directory') {
-            currentNode = childNode as VFSDirectory;
-        } else if (i === parts.length - 1) {
-            return childNode;
-        } else {
-            return null; // Path continues but we found a file
-        }
+    for (const part of parts) {
+        if (currentNode.type !== 'directory') return null;
+        const children = (currentNode as VFSDirectory).children;
+        const nextNode = Object.values(children).find(c => c.name === part);
+        if (!nextNode) return null;
+        currentNode = nextNode;
     }
     return currentNode;
 };
+
 
 const findParentVFSNode = (vfs: VFSDirectory, path: string): VFSDirectory | null => {
     const parentPath = path.substring(0, path.lastIndexOf('/'));
@@ -92,6 +106,9 @@ const App: React.FC = () => {
   // Widget state
   const [widgets, setWidgets] = useState<WidgetState[]>([]);
   const [isWidgetPickerVisible, setWidgetPickerVisible] = useState(false);
+
+  // App Lock State
+  const [passcodePrompt, setPasscodePrompt] = useState<PasscodePromptState>({ visible: false, action: 'enter', onSuccess: () => {} });
   
   // Memoize guest profile data, as it depends on window size.
   const GUEST_PROFILE_DATA = useMemo<UserProfileData>(() => ({
@@ -104,10 +121,10 @@ const App: React.FC = () => {
     installedLocalApps: [],
     shortcuts: [],
     widgets: [],
-    contacts: [
-        { id: 'contact-1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', phone: '555-0101', avatarId: 2 },
-        { id: 'contact-2', firstName: 'Grace', lastName: 'Hopper', email: 'grace@example.com', phone: '555-0102', avatarId: 5 },
-    ],
+    contacts: [],
+    watchedStocks: ['AAPL', 'GOOGL', 'MSFT', 'TSLA'],
+    lockedApps: [],
+    appLockPasscode: null,
   }), []);
 
     // Memoize admin profile data
@@ -163,6 +180,8 @@ const App: React.FC = () => {
       
       if (currentUser && currentUser !== 'admin') {
           await saveUserProfile(currentUser, newData);
+      } else if (!currentUser) { // Guest user
+          await saveGuestProfile(newData);
       }
   }, [userData, currentUser]);
   
@@ -188,6 +207,46 @@ const App: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+  
+  // Calendar Notification Checker
+  useEffect(() => {
+    const notificationTimer = setInterval(() => {
+        if (!isLoggedIn) return;
+
+        const now = new Date();
+        const currentDateKey = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().substring(0, 5); // HH:MM
+
+        const eventsForToday = userData.calendarEvents?.[currentDateKey] || [];
+        if (eventsForToday.length === 0) return;
+
+        let needsUpdate = false;
+        const updatedEventsForToday = eventsForToday.map(event => {
+            if (event.time === currentTime && !event.notified) {
+                console.log(`Sending notification for event: ${event.text}`);
+                addNotification({
+                    appId: 'calendar',
+                    title: 'Calendar Event Reminder',
+                    message: `${event.time}: ${event.text}`
+                });
+                needsUpdate = true;
+                return { ...event, notified: true };
+            }
+            return event;
+        });
+
+        if (needsUpdate) {
+            const newCalendarEvents = {
+                ...userData.calendarEvents,
+                [currentDateKey]: updatedEventsForToday
+            };
+            updateUserProfile({ calendarEvents: newCalendarEvents });
+        }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(notificationTimer);
+  }, [isLoggedIn, userData.calendarEvents, addNotification, updateUserProfile]);
+
 
   const handleInstallClick = async () => {
     if (!installPrompt) return;
@@ -201,17 +260,36 @@ const App: React.FC = () => {
 
   // One-time setup on app load
   useEffect(() => {
-    const interval = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setIsLoading(false), 500);
-          return 100;
-        }
-        return prev + 1;
-      });
-    }, 30); 
-    return () => clearInterval(interval);
+    let interval: number;
+
+    const initializeApp = async () => {
+      const guestProfile = await getGuestProfile();
+      if (guestProfile) {
+        console.log("Found saved guest session. Restoring...");
+        setUserData(guestProfile);
+        setIsLoggedIn(true);
+        setCurrentUser(null);
+      }
+
+      interval = window.setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setTimeout(() => setIsLoading(false), 500);
+            return 100;
+          }
+          return prev + 1;
+        });
+      }, 30);
+    };
+
+    initializeApp();
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, []);
   
   useEffect(() => {
@@ -277,6 +355,7 @@ const App: React.FC = () => {
   const handleLogin = useCallback(async (credentials?: { arsisId: string }): Promise<{ success: boolean; error?: string }> => {
     if (credentials?.arsisId === 'admin') {
         console.log("Admin login detected.");
+        await clearGuestProfile();
         setUserData(ADMIN_PROFILE_DATA);
         setIsLoggedIn(true);
         setCurrentUser('admin');
@@ -284,7 +363,9 @@ const App: React.FC = () => {
     }
 
     if (!credentials?.arsisId) { // Guest login
-        setUserData(GUEST_PROFILE_DATA);
+        const freshGuestProfile = GUEST_PROFILE_DATA;
+        setUserData(freshGuestProfile);
+        await saveGuestProfile(freshGuestProfile);
         setIsLoggedIn(true);
         setCurrentUser(null);
         return { success: true };
@@ -297,7 +378,8 @@ const App: React.FC = () => {
             message: 'Remote storage is not configured. Your session will not be saved.',
         });
     }
-
+    
+    await clearGuestProfile();
     const userProfileData = await loginOrCreateUser(credentials.arsisId, GUEST_PROFILE_DATA);
 
     if (isPersistenceConfigured) {
@@ -324,6 +406,7 @@ const App: React.FC = () => {
     const result = await createUser(newId, userData);
 
     if (result.success) {
+        await clearGuestProfile();
         setCurrentUser(newId);
         addNotification({
             appId: 'arsis-id',
@@ -336,7 +419,7 @@ const App: React.FC = () => {
 
   }, [userData, addNotification]);
 
-  const handleLogOut = useCallback(() => {
+  const handleLogOut = useCallback(async () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
     setUserData(GUEST_PROFILE_DATA);
@@ -353,6 +436,7 @@ const App: React.FC = () => {
     setNotificationCenterVisible(false);
     setContextMenu(prev => ({ ...prev, visible: false }));
     setWidgetPickerVisible(false);
+    await clearGuestProfile();
   }, [GUEST_PROFILE_DATA]);
 
   const toggleTheme = () => {
@@ -410,6 +494,13 @@ const App: React.FC = () => {
       const node = findVFSNode(newVfs, path);
       if (!node) return;
 
+      // Check for name collision
+      const parent = findParentVFSNode(newVfs, path);
+      if (parent && Object.values(parent.children).some(child => child.name === newName && child.id !== node.id)) {
+        addNotification({ appId: 'finder', title: 'Rename Failed', message: `An item named "${newName}" already exists here.`});
+        return;
+      }
+
       node.name = newName;
       handleVFSUpdate(newVfs);
   };
@@ -452,12 +543,74 @@ const App: React.FC = () => {
     updateUserProfile({ widgets: newWidgets });
   };
   
+  // --- App Lock Handlers ---
+  const handleSetPasscode = async (passcode: string) => {
+      const hashed = await hashPasscode(passcode);
+      updateUserProfile({ appLockPasscode: hashed });
+      setPasscodePrompt({ visible: false, action: 'set', onSuccess: () => {} });
+      addNotification({ appId: 'defense-ios', title: 'Security', message: 'App Lock passcode has been set.' });
+  };
+
+  const handleToggleAppLock = (appId: AppID) => {
+    const lockAction = () => {
+      const currentLocked = userData.lockedApps || [];
+      const isLocked = currentLocked.includes(appId);
+      const newLocked = isLocked ? currentLocked.filter(id => id !== appId) : [...currentLocked, appId];
+      updateUserProfile({ lockedApps: newLocked });
+    };
+
+    if (!userData.appLockPasscode) {
+      setPasscodePrompt({
+        visible: true,
+        action: 'set',
+        onSuccess: (passcode) => {
+          handleSetPasscode(passcode).then(() => {
+            // After setting the passcode, proceed to lock the app
+            const currentLocked = userData.lockedApps || [];
+            updateUserProfile({ lockedApps: [...currentLocked, appId] });
+          });
+        }
+      });
+    } else {
+      lockAction();
+    }
+  };
+  
   // --- App Management ---
   const openApp = useCallback((appId: AppID, initialProps: any = {}) => {
     setLaunchpadVisible(false);
     setSpotlightVisible(false);
 
-    const appConfig = allApps.find(app => app.id === appId);
+    // App Lock Check
+    if ((userData.lockedApps || []).includes(appId)) {
+        setPasscodePrompt({
+            visible: true,
+            action: 'enter',
+            appIdToUnlock: appId,
+            onSuccess: async (passcode) => {
+                const hashed = await hashPasscode(passcode);
+                if (hashed === userData.appLockPasscode) {
+                    setPasscodePrompt({ visible: false, action: 'enter', onSuccess: () => {} });
+                    openApp(appId, initialProps); // Re-call openApp, this time it will pass the lock check
+                } else {
+                    addNotification({ appId: 'defense-ios', title: 'Access Denied', message: 'Incorrect passcode.'});
+                }
+            }
+        });
+        // This is a bit of a hack: remove the app from locked list temporarily to allow the recursive call to pass
+        // A better solution might involve a temporary "unlocked" state list. For now, this works.
+        const originalLockedApps = userData.lockedApps;
+        setUserData(d => ({...d, lockedApps: (d.lockedApps || []).filter(id => id !== appId) }));
+        // Restore lock after a short delay in case user cancels prompt.
+        setTimeout(() => {
+            setUserData(d => ({...d, lockedApps: originalLockedApps }));
+        }, 1000); 
+        return;
+    }
+
+
+    let effectiveAppId = appId;
+    const appConfig = allApps.find(app => app.id === effectiveAppId);
     if (!appConfig) return;
 
     if (appConfig.uri) {
@@ -474,19 +627,29 @@ const App: React.FC = () => {
             return;
         }
         if (fileNode.name.endsWith('.txt') || fileNode.name.endsWith('.md')) {
-            appId = 'pages'; // Override to open with Pages
+            effectiveAppId = 'pages'; // Override to open with Pages
+        } else if (fileNode.name.endsWith('.arsapp')) {
+            try {
+                const manifest = JSON.parse(fileNode.content);
+                handleInstallLocalApp(manifest);
+            } catch (e) {
+                addNotification({ appId: 'finder', title: 'Installation Error', message: 'The selected file is not a valid app manifest.' });
+            }
+            return; // Don't open a window, just run the installer.
         }
     }
+    
+    const finalAppConfig = allApps.find(app => app.id === effectiveAppId)!;
 
     setWindows(currentWindows => {
-      const existingWindow = currentWindows.find(win => win.id === appId);
+      const existingWindow = currentWindows.find(win => win.id === effectiveAppId);
       
-      const AppComponent = appConfig.externalUrl ? Maverick : appConfig.component;
+      const AppComponent = finalAppConfig.externalUrl ? Maverick : finalAppConfig.component;
       if (!AppComponent) return currentWindows;
 
       if (existingWindow && !initialProps.filePath) { // Don't focus if opening new file
-        setActiveWindow(appId);
-        return currentWindows.map(win => win.id === appId ? { ...win, zIndex: nextZIndex, isMinimized: false } : win);
+        setActiveWindow(effectiveAppId);
+        return currentWindows.map(win => win.id === effectiveAppId ? { ...win, zIndex: nextZIndex, isMinimized: false } : win);
       } else {
         const appSpecificProps: any = {};
         
@@ -498,63 +661,67 @@ const App: React.FC = () => {
             onRenameNode: handleRenameNode
         };
 
-        if(appConfig.externalUrl) {
-            appSpecificProps.initialUrl = appConfig.externalUrl;
+        if(finalAppConfig.externalUrl) {
+            appSpecificProps.initialUrl = finalAppConfig.externalUrl;
             appSpecificProps.onApiCall = incrementApiCallCount;
             appSpecificProps.onUrlChange = () => {};
             appSpecificProps.onTitleChange = () => {};
-        } else if (appConfig.id === 'settings') {
+        } else if (finalAppConfig.id === 'settings') {
           appSpecificProps.onWallpaperSelect = setWallpaper;
           appSpecificProps.wallpapers = WALLPAPERS;
           appSpecificProps.theme = userData.settings.theme;
           appSpecificProps.onThemeToggle = toggleTheme;
-        } else if (['houston', 'imaginarium', 'weather', 'defense-ios'].includes(appConfig.id)) {
+        } else if (['houston', 'imaginarium', 'weather', 'defense-ios'].includes(finalAppConfig.id)) {
           appSpecificProps.onApiCall = incrementApiCallCount;
           appSpecificProps.addNotification = addNotification;
-        } else if (appConfig.id === 'maverick') {
+        } else if (finalAppConfig.id === 'maverick') {
             appSpecificProps.onApiCall = incrementApiCallCount;
             appSpecificProps.initialUrl = userData.maverickUrl;
             appSpecificProps.onUrlChange = (maverickUrl: string) => updateUserProfile({ maverickUrl });
             appSpecificProps.onTitleChange = (newTitle: string) => {
               setWindows(wins => wins.map(w => w.id === 'maverick' ? {...w, title: newTitle } : w));
             };
-        } else if (appConfig.id === 'finder') {
+        } else if (finalAppConfig.id === 'finder') {
+            appSpecificProps.openApp = openApp;
             appSpecificProps.onOpenFile = (filePath: string) => openApp('finder', { filePath });
-            appSpecificProps.onInstallApp = handleInstallLocalApp;
             Object.assign(appSpecificProps, vfsProps);
-        } else if (appConfig.id === 'pages') {
+        } else if (finalAppConfig.id === 'pages') {
             Object.assign(appSpecificProps, vfsProps, { onApiCall: incrementApiCallCount });
-        } else if (appConfig.id === 'photo-booth') {
+        } else if (finalAppConfig.id === 'photo-booth') {
              Object.assign(appSpecificProps, vfsProps);
-        } else if (appConfig.id === 'imaginarium') {
+        } else if (finalAppConfig.id === 'imaginarium') {
              Object.assign(appSpecificProps, { onCreateNode: handleCreateNode });
-        } else if (appConfig.id === 'contacts') {
+        } else if (finalAppConfig.id === 'contacts') {
             appSpecificProps.savedContacts = userData.contacts;
             appSpecificProps.onSaveContacts = (contacts: Contact[]) => updateUserProfile({ contacts });
-        } else if (appConfig.id === 'houston') {
+        } else if (finalAppConfig.id === 'houston') {
             appSpecificProps.history = userData.houstonHistory;
             appSpecificProps.onHistoryChange = (houstonHistory: any) => updateUserProfile({ houstonHistory });
-        } else if (appConfig.id === 'calendar') {
+        } else if (finalAppConfig.id === 'calendar') {
             appSpecificProps.savedEvents = userData.calendarEvents;
             appSpecificProps.onSaveEvents = (calendarEvents: any) => updateUserProfile({ calendarEvents });
-        } else if (appConfig.id === 'arsis-id') {
+        } else if (finalAppConfig.id === 'arsis-id') {
             appSpecificProps.currentUser = currentUser;
             appSpecificProps.onCreateUserFromGuest = handleCreateUserFromGuest;
-        } else if (appConfig.id === 'app-store') {
+        } else if (finalAppConfig.id === 'app-store') {
             appSpecificProps.installedApps = userData.installedExternalApps || [];
             appSpecificProps.onInstall = handleInstallApp;
             appSpecificProps.onOpen = openApp;
-        } else if (appConfig.id === 'shortcuts') {
+        } else if (finalAppConfig.id === 'shortcuts') {
             appSpecificProps.savedShortcuts = userData.shortcuts;
             appSpecificProps.onSaveShortcuts = (shortcuts: Shortcut[]) => updateUserProfile({ shortcuts });
+        } else if (finalAppConfig.id === 'stocks') {
+            appSpecificProps.watchedStocks = userData.watchedStocks || [];
+            appSpecificProps.onWatchlistChange = (watchedStocks: string[]) => updateUserProfile({ watchedStocks });
+            appSpecificProps.onApiCall = incrementApiCallCount;
         }
         
         const newWindow: WindowState = {
-          id: initialProps.filePath ? `${appId}-${Date.now()}` : appId,
-          title: initialProps.filePath ? findVFSNode(userData.vfs, initialProps.filePath)?.name || appConfig.title : appConfig.title,
+          id: initialProps.filePath ? `${effectiveAppId}-${Date.now()}` : effectiveAppId,
+          title: initialProps.filePath ? findVFSNode(userData.vfs, initialProps.filePath)?.name || finalAppConfig.title : finalAppConfig.title,
           Component: AppComponent,
-          position: { x: window.innerWidth / 2 - (appConfig.width || 800) / 2, y: window.innerHeight / 2 - (appConfig.height || 600) / 2 },
-          size: { width: appConfig.width || 800, height: appConfig.height || 600 },
+          position: { x: window.innerWidth / 2 - (finalAppConfig.width || 800) / 2, y: window.innerHeight / 2 - (finalAppConfig.height || 600) / 2 },
+          size: { width: finalAppConfig.width || 800, height: finalAppConfig.height || 600 },
           zIndex: nextZIndex,
           isMinimized: false,
           isMaximized: false,
@@ -765,6 +932,8 @@ const App: React.FC = () => {
                 onAppClick={(id) => openApp(id)}
                 onLaunchpadClick={toggleLaunchpad}
                 windows={windows}
+                lockedApps={userData.lockedApps || []}
+                onToggleLock={handleToggleAppLock}
               />
 
               <ApiMonitorWidget
@@ -799,6 +968,15 @@ const App: React.FC = () => {
                     wallpaperUrl={userData.settings.wallpaper}
                     allApps={allApps}
                   />
+              )}
+              
+              {passcodePrompt.visible && (
+                <PasscodePrompt
+                    action={passcodePrompt.action}
+                    onClose={() => setPasscodePrompt(p => ({ ...p, visible: false }))}
+                    onConfirm={passcodePrompt.onSuccess}
+                    appName={passcodePrompt.appIdToUnlock ? allApps.find(a => a.id === passcodePrompt.appIdToUnlock)?.title : undefined}
+                />
               )}
 
               <ControlCenter

@@ -29,7 +29,7 @@ const Avatar: React.FC<{ contact: Contact; size?: 'sm' | 'lg' }> = ({ contact, s
 
 const Contacts: React.FC<ContactsProps> = ({ savedContacts, onSaveContacts }) => {
     const [contacts, setContacts] = useState<Contact[]>(savedContacts || []);
-    const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+    const [selectedContactId, setSelectedContactId] = useState<string | null>( (savedContacts && savedContacts.length > 0) ? savedContacts[0].id : null);
     const [isEditing, setIsEditing] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
@@ -67,7 +67,7 @@ const Contacts: React.FC<ContactsProps> = ({ savedContacts, onSaveContacts }) =>
             const newContacts = contacts.filter(c => c.id !== selectedContact.id);
             setContacts(newContacts);
             onSaveContacts(newContacts);
-            setSelectedContactId(null);
+            setSelectedContactId(newContacts.length > 0 ? newContacts[0].id : null);
         }
     };
 
@@ -94,6 +94,9 @@ const Contacts: React.FC<ContactsProps> = ({ savedContacts, onSaveContacts }) =>
     const handleCancel = () => {
         setIsEditing(false);
         setIsCreating(false);
+        if (!selectedContactId && contacts.length > 0) {
+            setSelectedContactId(contacts[0].id);
+        }
     };
 
     const ContactForm: React.FC<{ contact?: Contact; onSave: (data: Omit<Contact, 'id'>) => void; onCancel: () => void }> = ({ contact, onSave, onCancel }) => {
@@ -102,7 +105,7 @@ const Contacts: React.FC<ContactsProps> = ({ savedContacts, onSaveContacts }) =>
             lastName: contact?.lastName || '',
             email: contact?.email || '',
             phone: contact?.phone || '',
-            avatarId: contact?.avatarId || 0,
+            avatarId: contact?.avatarId ?? Math.floor(Math.random() * AVATARS.length),
         });
 
         const handleSubmit = (e: React.FormEvent) => {
@@ -194,8 +197,11 @@ const Contacts: React.FC<ContactsProps> = ({ savedContacts, onSaveContacts }) =>
                 ) : selectedContact ? (
                     <ContactDetails contact={selectedContact} />
                 ) : (
-                    <div className="flex-grow flex items-center justify-center text-gray-500">
-                        <p>Select a contact or create a new one.</p>
+                    <div className="flex-grow flex items-center justify-center text-gray-500 text-center p-4">
+                        <div>
+                            <h2 className="text-lg font-semibold">No Contact Selected</h2>
+                            <p>Select a contact from the list or create a new one.</p>
+                        </div>
                     </div>
                 )}
             </div>

@@ -10,6 +10,7 @@ const Calendar: React.FC<CalendarProps> = ({ savedEvents, onSaveEvents }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [eventInput, setEventInput] = useState('');
+  const [timeInput, setTimeInput] = useState('12:00');
 
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -37,8 +38,15 @@ const Calendar: React.FC<CalendarProps> = ({ savedEvents, onSaveEvents }) => {
     if (!eventInput.trim() || !selectedDate) return;
 
     const dateKey = selectedDate.toISOString().split('T')[0];
-    const newEvent = { id: Date.now(), text: eventInput };
+    const newEvent: CalendarEvent = { 
+        id: Date.now(), 
+        text: eventInput, 
+        date: dateKey,
+        time: timeInput
+    };
     const dayEvents = savedEvents[dateKey] ? [...savedEvents[dateKey], newEvent] : [newEvent];
+    dayEvents.sort((a,b) => a.time.localeCompare(b.time));
+
     onSaveEvents({ ...savedEvents, [dateKey]: dayEvents });
     setEventInput('');
   };
@@ -89,31 +97,44 @@ const Calendar: React.FC<CalendarProps> = ({ savedEvents, onSaveEvents }) => {
           })}
         </div>
       </div>
-      <div className="w-1/3 p-4 bg-white dark:bg-gray-800/50">
+      <div className="w-1/3 p-4 bg-white dark:bg-gray-800/50 flex flex-col">
         <h3 className="text-lg font-semibold mb-3">
           {selectedDate ? selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a date'}
         </h3>
         {selectedDate && (
-          <div>
-            <ul className="space-y-2 mb-4 h-48 overflow-y-auto">
-              {selectedDayEvents.length > 0 ? selectedDayEvents.map((event: CalendarEvent) => (
-                <li key={event.id} className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-md flex justify-between items-center text-sm">
-                  <span>{event.text}</span>
-                  <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:text-red-700 text-xs">X</button>
-                </li>
-              )) : <p className="text-sm text-gray-500">No events for this day.</p>}
-            </ul>
-            <form onSubmit={handleAddEvent}>
+          <>
+            <div className="flex-grow overflow-y-auto mb-4">
+              <ul className="space-y-2">
+                {selectedDayEvents.length > 0 ? selectedDayEvents.map((event: CalendarEvent) => (
+                  <li key={event.id} className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-md flex justify-between items-center text-sm">
+                    <div>
+                        <span className="font-semibold">{event.time}</span>
+                        <p>{event.text}</p>
+                    </div>
+                    <button onClick={() => handleDeleteEvent(event.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">X</button>
+                  </li>
+                )) : <p className="text-sm text-gray-500">No events for this day.</p>}
+              </ul>
+            </div>
+            <form onSubmit={handleAddEvent} className="flex-shrink-0">
               <input
                 type="text"
                 value={eventInput}
                 onChange={(e) => setEventInput(e.target.value)}
-                placeholder="Add new event"
+                placeholder="New event title..."
                 className="w-full p-2 border rounded bg-transparent dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="time"
+                value={timeInput}
+                onChange={(e) => setTimeInput(e.target.value)}
+                className="w-full mt-2 p-2 border rounded bg-transparent dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                required
               />
               <button type="submit" className="w-full mt-2 p-2 bg-blue-500 text-white rounded hover:bg-blue-600">Add Event</button>
             </form>
-          </div>
+          </>
         )}
       </div>
     </div>

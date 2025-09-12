@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import type { VFS, VFSFile } from '../types';
-import { HoustonIcon } from '../components/Icons';
+import { HoustonIcon, BoldIcon, ItalicIcon, ListUlIcon, ListOlIcon } from '../components/Icons';
 import { API_KEY } from '../config';
 
 interface PagesProps {
@@ -30,8 +30,10 @@ const Pages: React.FC<PagesProps> = (props) => {
   const [activeFilePath, setActiveFilePath] = useState<string | null>(initialPath || (documents[0] ? `/Documents/${documents[0].name}` : null));
   const [isHoustonLoading, setIsHoustonLoading] = useState(false);
   const [activeHoustonAction, setActiveHoustonAction] = useState<HoustonAction | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const editorRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
 
   const activeFile = useMemo(() => {
     if (!activeFilePath) return null;
@@ -51,13 +53,32 @@ const Pages: React.FC<PagesProps> = (props) => {
     if (activeFile && titleRef.current) {
         titleRef.current.value = activeFile.name;
     }
+    setSaveStatus('saved');
   }, [activeFile]);
 
-  const handleContentChange = () => {
-    if (activeFilePath && editorRef.current) {
-      onUpdateNodeContent(activeFilePath, editorRef.current.innerHTML);
+  const triggerSave = useCallback(() => {
+    if (!activeFilePath || !editorRef.current || saveStatus === 'saving') return;
+    
+    setSaveStatus('saving');
+
+    const content = editorRef.current.innerHTML;
+    onUpdateNodeContent(activeFilePath, content);
+    
+    // Simulate async save and show status
+    setTimeout(() => {
+        setSaveStatus('saved');
+    }, 500);
+
+  }, [activeFilePath, onUpdateNodeContent, saveStatus]);
+
+
+  const handleContentChange = useCallback(() => {
+    setSaveStatus('unsaved');
+    if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
     }
-  };
+    saveTimeoutRef.current = window.setTimeout(triggerSave, 1500);
+  }, [triggerSave]);
 
   const handleTitleChange = (e: React.FocusEvent<HTMLInputElement>) => {
       if (activeFilePath && activeFile && e.target.value !== activeFile.name) {
@@ -100,8 +121,8 @@ const Pages: React.FC<PagesProps> = (props) => {
         
         if (editorRef.current) {
             editorRef.current.innerHTML = newContent;
+            handleContentChange();
         }
-        onUpdateNodeContent(activeFilePath, newContent);
 
     } catch (e) {
         console.error("Houston AI error in Pages:", e);
@@ -110,6 +131,20 @@ const Pages: React.FC<PagesProps> = (props) => {
         setActiveHoustonAction(null);
     }
   };
+
+  const formatDoc = (command: string) => {
+      document.execCommand(command, false);
+      editorRef.current?.focus();
+      handleContentChange();
+  }
+  
+  const SaveStatusIndicator = () => {
+    let text = '';
+    if (saveStatus === 'saving') text = 'Saving...';
+    if (saveStatus === 'saved') text = 'Saved';
+    if (saveStatus === 'unsaved') text = 'Unsaved changes';
+    return <span className="text-xs text-gray-500 dark:text-gray-400 italic">{text}</span>;
+  }
   
   return (
     <div className="w-full h-full flex bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">
@@ -132,21 +167,29 @@ const Pages: React.FC<PagesProps> = (props) => {
       <div className="w-2/3 flex-grow flex flex-col">
           {activeFile ? (
               <>
-                  <div className="flex-shrink-0 p-2 border-b border-gray-300/60 dark:border-gray-700/60 flex items-center space-x-2">
+                  <div className="flex-shrink-0 p-2 border-b border-gray-300/60 dark:border-gray-700/60 flex items-center justify-between space-x-2">
                       <input ref={titleRef} defaultValue={activeFile.name} onBlur={handleTitleChange} className="font-bold text-lg bg-transparent focus:outline-none flex-grow" />
-                      <div className="flex items-center space-x-1">
-                          {(['complete', 'summarize', 'fix'] as HoustonAction[]).map(action => (
-                            <button key={action} onClick={() => handleHoustonAction(action)} disabled={isHoustonLoading}
+                      <SaveStatusIndicator />
+                  </div>
+                  {/* Toolbar */}
+                   <div className="flex-shrink-0 p-1.5 border-b border-gray-300/60 dark:border-gray-700/60 flex items-center space-x-1 bg-gray-50 dark:bg-gray-900">
+                        <button onClick={() => formatDoc('bold')} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"><BoldIcon className="w-5 h-5"/></button>
+                        <button onClick={() => formatDoc('italic')} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"><ItalicIcon className="w-5 h-5"/></button>
+                        <div className="h-5 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                        <button onClick={() => formatDoc('insertUnorderedList')} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"><ListUlIcon className="w-5 h-5"/></button>
+                        <button onClick={() => formatDoc('insertOrderedList')} className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"><ListOlIcon className="w-5 h-5"/></button>
+                         <div className="h-5 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                        {(['complete', 'summarize', 'fix'] as HoustonAction[]).map(action => (
+                            <button key={action} onClick={() => handleHoustonAction(action)} disabled={isHoustonLoading} title={`Houston: ${action}`}
                                 className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50">
                                 <HoustonIcon className={`w-5 h-5 ${isHoustonLoading && activeHoustonAction === action ? 'animate-pulse' : ''}`} />
                             </button>
-                          ))}
-                      </div>
-                  </div>
-                  <div ref={editorRef} contentEditable={true} onBlur={handleContentChange}
+                        ))}
+                    </div>
+
+                  <div ref={editorRef} contentEditable={true} onInput={handleContentChange}
                       className="flex-grow p-4 overflow-y-auto focus:outline-none"
                       suppressContentEditableWarning={true}
-                      dangerouslySetInnerHTML={{ __html: activeFile.content }}
                   />
               </>
           ) : (

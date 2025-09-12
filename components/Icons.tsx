@@ -168,16 +168,34 @@ export const XIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 
 export const BoldIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h2.25c1.485 0 2.5 1.015 2.5 2.5s-1.015 2.5-2.5 2.5H8.25v-5zm0 5h2.75c1.82 0 3.25 1.43 3.25 3.25s-1.43 3.25-3.25 3.25H8.25v-6.5z" />
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M13.25 12.5a.75.75 0 000-1.5H8.75a.75.75 0 000 1.5h4.5z" />
+        <path fillRule="evenodd" d="M19.5 4.5a3 3 0 00-3-3H8.25a3 3 0 00-3 3v15a3 3 0 003 3h8.25a3 3 0 003-3v-15zm-4.25 5a2.25 2.25 0 00-2.25-2.25H8.75a2.25 2.25 0 000 4.5h4.25a2.25 2.25 0 002.25-2.25zm-2.25 4a2.25 2.25 0 012.25 2.25 2.25 2.25 0 01-2.25 2.25H8.75a2.25 2.25 0 010-4.5h6.5z" clipRule="evenodd" />
     </svg>
 );
 
 export const ItalicIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h3m-3.75 12h3.75m-6-12L12 18" />
+     <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M11.75 4.5a.75.75 0 000 1.5h2.5a.75.75 0 000-1.5h-2.5z" />
+        <path fillRule="evenodd" d="M12 1.5a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0v-3A.75.75 0 0112 1.5zM12.75 18a.75.75 0 000 1.5h-2.5a.75.75 0 000-1.5h2.5z" />
+        <path fillRule="evenodd" d="M12 16.5a.75.75 0 01.75.75v3a.75.75 0 01-1.5 0v-3a.75.75 0 01.75-.75z" />
+        <path d="M14.06 5.03a.75.75 0 00-1.06-1.06l-6.5 6.5a.75.75 0 001.06 1.06l6.5-6.5z" />
+        <path d="M15.12 12.03a.75.75 0 00-1.06-1.06l-6.5 6.5a.75.75 0 001.06 1.06l6.5-6.5z" />
     </svg>
 );
+
+export const ListUlIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M2.25 4.5A.75.75 0 013 3.75h14.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zm0 4.5A.75.75 0 013 8.25h14.25a.75.75 0 010 1.5H3A.75.75 0 012.25 9zm0 4.5A.75.75 0 013 12.75h14.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zm0 4.5A.75.75 0 013 17.25h14.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75z" clipRule="evenodd" />
+    </svg>
+);
+
+export const ListOlIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fillRule="evenodd" d="M2.25 4.5c0-.414.336-.75.75-.75h14.25a.75.75 0 010 1.5H3a.75.75 0 01-.75-.75zm15 3.75a.75.75 0 000 1.5h-14.25a.75.75 0 000-1.5H17.25zm0 3.75a.75.75 0 000 1.5h-14.25a.75.75 0 000-1.5H17.25zm0 3.75a.75.75 0 000 1.5h-14.25a.75.75 0 000-1.5H17.25z" clipRule="evenodd" />
+    </svg>
+);
+
 
 export const FontSizeIncreaseIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
@@ -558,24 +576,8 @@ export const DownloadIcon: React.FC<{ className?: string }> = ({ className }) =>
     </svg>
 );
 
-export const PiSimulatorIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" className={className}>
-        <rect width="56" height="56" x="4" y="4" fill="#333" rx="12" />
-        <defs>
-            <radialGradient id="pi-grad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#C51A4A" />
-                <stop offset="100%" stopColor="#9C143A" />
-            </radialGradient>
-        </defs>
-        <circle cx="28" cy="24" r="6" fill="url(#pi-grad)" />
-        <circle cx="36" cy="24" r="6" fill="url(#pi-grad)" />
-        <circle cx="24" cy="31" r="6" fill="url(#pi-grad)" />
-        <circle cx="32" cy="31" r="6" fill="url(#pi-grad)" />
-        <circle cx="40" cy="31" r="6" fill="url(#pi-grad)" />
-        <circle cx="28" cy="38" r="6" fill="url(#pi-grad)" />
-        <circle cx="36" cy="38" r="6" fill="url(#pi-grad)" />
-        <circle cx="32" cy="45" r="6" fill="url(#pi-grad)" />
-        <path d="M36 20 C 40 16, 44 16, 44 20" stroke="#228B22" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path d="M40 12 C 44 12, 48 16, 44 20" stroke="#228B22" strokeWidth="3" fill="none" strokeLinecap="round" />
-    </svg>
+export const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+  </svg>
 );

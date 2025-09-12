@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { API_KEY } from '../config';
-
-interface WeatherData {
-  temperature: number;
-  condition: string;
-  emoji: string;
-}
+import type { WeatherData } from '../types';
 
 interface WeatherProps {
     onApiCall?: () => void;
@@ -30,15 +25,40 @@ const Weather: React.FC<WeatherProps> = ({ onApiCall }) => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `Get the current weather for ${searchCity}.`,
+        contents: `Get the current weather, 24-hour hourly forecast, and 7-day daily forecast for ${searchCity}.`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    temperature: { type: Type.NUMBER, description: "Temperature in Celsius" },
-                    condition: { type: Type.STRING, description: "A brief description of the weather condition" },
-                    emoji: { type: Type.STRING, description: "A single emoji that represents the weather condition" }
+                    temperature: { type: Type.NUMBER, description: "Current temperature in Celsius" },
+                    condition: { type: Type.STRING, description: "A brief description of the current weather condition" },
+                    emoji: { type: Type.STRING, description: "A single emoji that represents the current weather condition" },
+                    hourly: {
+                        type: Type.ARRAY,
+                        description: "The 24-hour forecast, one entry per hour.",
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                time: { type: Type.STRING, description: "The hour for the forecast, e.g., '14:00'" },
+                                temp: { type: Type.NUMBER, description: "The temperature in Celsius for that hour" },
+                                emoji: { type: Type.STRING, description: "A single emoji for the condition at that hour" },
+                            }
+                        }
+                    },
+                    daily: {
+                        type: Type.ARRAY,
+                        description: "The 7-day forecast.",
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                day: { type: Type.STRING, description: "The day of the week, e.g., 'Tuesday'" },
+                                high: { type: Type.NUMBER, description: "The high temperature in Celsius" },
+                                low: { type: Type.NUMBER, description: "The low temperature in Celsius" },
+                                emoji: { type: Type.STRING, description: "A single emoji for the day's primary condition" },
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -67,8 +87,8 @@ const Weather: React.FC<WeatherProps> = ({ onApiCall }) => {
   }, []);
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-600 text-white p-6 flex flex-col items-center">
-      <form onSubmit={handleSearch} className="w-full mb-6">
+    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-600 text-white p-4 flex flex-col font-sans">
+      <form onSubmit={handleSearch} className="w-full mb-4 flex-shrink-0">
         <input
           type="text"
           value={city}
@@ -84,12 +104,43 @@ const Weather: React.FC<WeatherProps> = ({ onApiCall }) => {
         )}
         {error && <p className="text-red-300 bg-red-900/50 p-2 rounded">{error}</p>}
         {weather && !isLoading && (
-          <>
-            <h2 className="text-3xl font-bold capitalize">{city}</h2>
-            <div className="text-8xl my-4">{weather.emoji}</div>
-            <p className="text-6xl font-light">{weather.temperature}°C</p>
-            <p className="text-xl mt-2">{weather.condition}</p>
-          </>
+          <div className="w-full flex flex-col items-center">
+            <h2 className="text-3xl font-bold capitalize flex-shrink-0">{city}</h2>
+            <div className="text-8xl my-2 flex-shrink-0">{weather.emoji}</div>
+            <p className="text-6xl font-light flex-shrink-0">{weather.temperature}°C</p>
+            <p className="text-xl mt-1 mb-6 flex-shrink-0">{weather.condition}</p>
+            
+            {/* Hourly Forecast */}
+            <div className="w-full bg-white/10 backdrop-blur-sm rounded-xl p-3 mb-4 flex-shrink-0">
+                <h3 className="text-sm font-semibold uppercase text-gray-300 mb-2 text-left">Hourly Forecast</h3>
+                <div className="flex space-x-4 overflow-x-auto pb-2 -mb-2">
+                    {weather.hourly.map((hour, index) => (
+                        <div key={index} className="flex flex-col items-center flex-shrink-0 w-16 text-center">
+                            <span className="text-xs text-gray-200">{hour.time}</span>
+                            <span className="text-2xl my-1">{hour.emoji}</span>
+                            <span className="font-semibold">{hour.temp}°</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Daily Forecast */}
+             <div className="w-full bg-white/10 backdrop-blur-sm rounded-xl p-3 flex-shrink-0">
+                <h3 className="text-sm font-semibold uppercase text-gray-300 mb-2 text-left">7-Day Forecast</h3>
+                <div className="space-y-1">
+                   {weather.daily.map((day, index) => (
+                       <div key={index} className="flex items-center justify-between text-sm">
+                           <span className="font-medium w-1/3 text-left">{day.day}</span>
+                           <span className="text-2xl w-1/3 text-center">{day.emoji}</span>
+                           <div className="w-1/3 text-right">
+                               <span className="font-semibold mr-2">{day.high}°</span>
+                               <span className="text-gray-300">{day.low}°</span>
+                           </div>
+                       </div>
+                   ))}
+                </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -23,6 +23,7 @@ const urlsToCache = [
   './contexts/SecurityContext.tsx',
   './services/userProfile.ts',
   './services/storageService.ts',
+  './services/localDbService.ts',
   
   // Components
   './components/TopBar.tsx',
@@ -40,6 +41,7 @@ const urlsToCache = [
   './components/ControlCenter.tsx',
   './components/NotificationCenter.tsx',
   './components/NotificationToast.tsx',
+  './components/PasscodePrompt.tsx',
   './components/Icons.tsx',
   
   // Apps
@@ -65,7 +67,6 @@ const urlsToCache = [
   './apps/Shortcuts.tsx',
   './apps/SystemMonitor.tsx',
   './apps/Contacts.tsx',
-  './apps/PiSimulator.tsx',
   
   // CDN resources
   'https://aistudiocdn.com/react@^19.1.1',

@@ -1,7 +1,5 @@
 {
   "name": "ArsisOS v2.5 Maverick-APP",
   "description": "A fully functional MacOS-like desktop environment built in React. It features a draggable window manager, a dock, a top menu bar, and several working applications including a terminal, notes app, calculator, weather app, file explorer, and a web browser. Our goal is to now take the created, web operating OS, and make it a real, downloadbale app. ",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "requestFramePermissions": []
 }

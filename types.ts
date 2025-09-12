@@ -130,6 +130,9 @@ export interface ProxyConfig {
 export interface CalendarEvent {
     id: number;
     text: string;
+    date: string; // YYYY-MM-DD
+    time: string; // HH:MM
+    notified?: boolean;
 }
 
 export interface HoustonMessage {
@@ -228,4 +231,38 @@ export interface UserProfileData {
     shortcuts: Shortcut[];
     widgets?: WidgetState[];
     contacts: Contact[];
+    watchedStocks?: string[];
+    lockedApps?: AppID[];
+    appLockPasscode?: string | null;
+}
+
+// --- WEATHER TYPES ---
+export interface HourlyForecast {
+    time: string; // e.g., "14:00"
+    temp: number;
+    emoji: string;
+}
+
+export interface DailyForecast {
+    day: string; // e.g., "Tuesday"
+    high: number;
+    low: number;
+    emoji: string;
+}
+
+export interface WeatherData {
+  temperature: number;
+  condition: string;
+  emoji: string;
+  hourly: HourlyForecast[];
+  daily: DailyForecast[];
+}
+
+// --- STOCKS TYPES ---
+export interface StockData {
+  ticker: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
 }
